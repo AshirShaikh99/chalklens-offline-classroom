@@ -4,7 +4,7 @@ class GemmaGenerationSettings {
     this.topK = 64,
     this.topP = 0.95,
     this.randomSeed = 1,
-    this.thinkingMode = false,
+    this.thinkingMode = true,
   });
 
   static const defaults = GemmaGenerationSettings();

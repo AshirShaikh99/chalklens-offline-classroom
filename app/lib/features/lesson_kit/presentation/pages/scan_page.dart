@@ -12,7 +12,9 @@ import '../../../../core/constants/languages.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/adaptive_components.dart';
+import '../../../../core/widgets/reasoning_toggle.dart';
 import '../../../../core/widgets/soft_reveal.dart';
+import '../../../settings/presentation/providers/settings_provider.dart';
 import '../../domain/entities/lesson_context.dart';
 import '../../domain/entities/student_level.dart';
 import '../providers/lesson_kit_providers.dart';
@@ -168,6 +170,12 @@ class _ScanPageState extends ConsumerState<ScanPage> {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final thinkingMode = ref.watch(
+      settingsProvider.select(
+        (settings) => settings.modelSettings.thinkingMode,
+      ),
+    );
+    final settingsNotifier = ref.read(settingsProvider.notifier);
     return AdaptivePageScaffold(
       title: 'Make a lesson',
       onBack: () => context.goNamed(AppRoute.home),
@@ -232,6 +240,7 @@ class _ScanPageState extends ConsumerState<ScanPage> {
                                 language: _language,
                                 classDuration: _classDuration,
                                 studentLevel: _studentLevel,
+                                thinkingMode: thinkingMode,
                                 onGradeChanged: (v) =>
                                     setState(() => _grade = v ?? _grade),
                                 onSubjectChanged: (v) =>
@@ -242,6 +251,8 @@ class _ScanPageState extends ConsumerState<ScanPage> {
                                     setState(() => _classDuration = v),
                                 onStudentLevelChanged: (v) =>
                                     setState(() => _studentLevel = v),
+                                onThinkingModeChanged:
+                                    settingsNotifier.setThinkingMode,
                               ),
                             ),
                           ),
@@ -266,6 +277,7 @@ class _ScanPageState extends ConsumerState<ScanPage> {
                           language: _language,
                           classDuration: _classDuration,
                           studentLevel: _studentLevel,
+                          thinkingMode: thinkingMode,
                           onGradeChanged: (v) =>
                               setState(() => _grade = v ?? _grade),
                           onSubjectChanged: (v) =>
@@ -276,6 +288,8 @@ class _ScanPageState extends ConsumerState<ScanPage> {
                               setState(() => _classDuration = v),
                           onStudentLevelChanged: (v) =>
                               setState(() => _studentLevel = v),
+                          onThinkingModeChanged:
+                              settingsNotifier.setThinkingMode,
                         ),
                       ),
                     ],
@@ -371,11 +385,13 @@ class _ClassSetupPanel extends StatelessWidget {
     required this.language,
     required this.classDuration,
     required this.studentLevel,
+    required this.thinkingMode,
     required this.onGradeChanged,
     required this.onSubjectChanged,
     required this.onLanguageChanged,
     required this.onDurationChanged,
     required this.onStudentLevelChanged,
+    required this.onThinkingModeChanged,
   });
 
   final String grade;
@@ -383,11 +399,13 @@ class _ClassSetupPanel extends StatelessWidget {
   final AppLanguage language;
   final double classDuration;
   final StudentLevel studentLevel;
+  final bool thinkingMode;
   final ValueChanged<String?> onGradeChanged;
   final ValueChanged<String?> onSubjectChanged;
   final ValueChanged<AppLanguage?> onLanguageChanged;
   final ValueChanged<double> onDurationChanged;
   final ValueChanged<StudentLevel> onStudentLevelChanged;
+  final ValueChanged<bool> onThinkingModeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -427,6 +445,12 @@ class _ClassSetupPanel extends StatelessWidget {
           _StudentLevelSelector(
             value: studentLevel,
             onChanged: onStudentLevelChanged,
+          ),
+          const SizedBox(height: 18),
+          ReasoningToggle(
+            enabled: thinkingMode,
+            onChanged: onThinkingModeChanged,
+            detail: 'Plan first, then write the kit.',
           ),
         ],
       ),

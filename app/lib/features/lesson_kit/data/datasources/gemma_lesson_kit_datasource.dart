@@ -56,7 +56,7 @@ class GemmaLessonKitDatasource implements LessonKitDatasource {
       ),
     );
     final model = await FlutterGemma.getActiveModel(
-      maxTokens: 2048,
+      maxTokens: 4096,
       preferredBackend: PreferredBackend.gpu,
       supportImage: useImage,
       maxNumImages: useImage ? 1 : null,
@@ -95,6 +95,8 @@ class GemmaLessonKitDatasource implements LessonKitDatasource {
       final buffer = StringBuffer();
       var generatedTokens = 0;
       var generatedCharacters = 0;
+      var reasoningCharacters = 0;
+      var reasoningPreview = '';
       var lastProgressAt = DateTime.fromMillisecondsSinceEpoch(0);
 
       onProgress?.call(
@@ -105,7 +107,30 @@ class GemmaLessonKitDatasource implements LessonKitDatasource {
       );
       final stream = chat.generateChatResponseAsync();
       await for (final chunk in stream) {
-        if (chunk is TextResponse) {
+        if (chunk is ThinkingResponse) {
+          if (chunk.content.trim().isEmpty) continue;
+          reasoningCharacters += chunk.content.length;
+          reasoningPreview = _appendReasoningPreview(
+            current: reasoningPreview,
+            chunk: chunk.content,
+          );
+
+          final now = DateTime.now();
+          if (now.difference(lastProgressAt) >
+              const Duration(milliseconds: 160)) {
+            lastProgressAt = now;
+            onProgress?.call(
+              LessonGenerationProgress(
+                phase: LessonGenerationPhase.namingLesson,
+                progress: 0.3,
+                generatedTokens: generatedTokens,
+                generatedCharacters: generatedCharacters,
+                reasoningCharacters: reasoningCharacters,
+                reasoningPreview: reasoningPreview,
+              ),
+            );
+          }
+        } else if (chunk is TextResponse) {
           final token = chunk.token;
           if (token.isEmpty) continue;
           buffer.write(token);
@@ -122,6 +147,8 @@ class GemmaLessonKitDatasource implements LessonKitDatasource {
                 raw: buffer.toString(),
                 generatedTokens: generatedTokens,
                 generatedCharacters: generatedCharacters,
+                reasoningCharacters: reasoningCharacters,
+                reasoningPreview: reasoningPreview,
               ),
             );
           }
@@ -135,6 +162,8 @@ class GemmaLessonKitDatasource implements LessonKitDatasource {
           progress: 0.94,
           generatedTokens: generatedTokens,
           generatedCharacters: generatedCharacters,
+          reasoningCharacters: reasoningCharacters,
+          reasoningPreview: reasoningPreview,
         ),
       );
       final kit = _parseLessonKit(raw);
@@ -144,6 +173,8 @@ class GemmaLessonKitDatasource implements LessonKitDatasource {
           progress: 1,
           generatedTokens: generatedTokens,
           generatedCharacters: generatedCharacters,
+          reasoningCharacters: reasoningCharacters,
+          reasoningPreview: reasoningPreview,
         ),
       );
       return kit;
@@ -156,6 +187,8 @@ class GemmaLessonKitDatasource implements LessonKitDatasource {
     required String raw,
     required int generatedTokens,
     required int generatedCharacters,
+    required int reasoningCharacters,
+    required String reasoningPreview,
   }) {
     final phase = _phaseForPartialOutput(raw);
     final phaseProgress = _progressFloorForPhase(phase);
@@ -169,7 +202,21 @@ class GemmaLessonKitDatasource implements LessonKitDatasource {
           .toDouble(),
       generatedTokens: generatedTokens,
       generatedCharacters: generatedCharacters,
+      reasoningCharacters: reasoningCharacters,
+      reasoningPreview: reasoningPreview,
     );
+  }
+
+  String _appendReasoningPreview({
+    required String current,
+    required String chunk,
+  }) {
+    final normalized = chunk.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (normalized.isEmpty) return current;
+    final joined = current.isEmpty ? normalized : '$current $normalized';
+    const limit = 520;
+    if (joined.length <= limit) return joined;
+    return '...${joined.substring(joined.length - limit).trimLeft()}';
   }
 
   LessonGenerationPhase _phaseForPartialOutput(String raw) {

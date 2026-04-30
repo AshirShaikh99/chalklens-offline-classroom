@@ -14,6 +14,7 @@ import '../../domain/entities/lesson_context.dart';
 import '../../domain/entities/lesson_generation_progress.dart';
 import '../../domain/entities/lesson_kit.dart';
 import '../../domain/entities/student_level.dart';
+import '../../../settings/presentation/providers/settings_provider.dart';
 import '../providers/lesson_kit_providers.dart';
 import '../widgets/lesson_kit_view.dart';
 
@@ -146,6 +147,11 @@ class _LoadingState extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = context.tokens;
     final progress = ref.watch(lessonGenerationProgressProvider);
+    final thinkingMode = ref.watch(
+      settingsProvider.select(
+        (settings) => settings.modelSettings.thinkingMode,
+      ),
+    );
     final active = _GenerationStatusCopy.from(progress.phase);
     final activeStep = _stepIndexFor(progress.phase);
 
@@ -205,7 +211,9 @@ class _LoadingState extends ConsumerWidget {
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    'Gemma is working locally on this device.',
+                                    thinkingMode
+                                        ? 'Gemma is reasoning locally on this device.'
+                                        : 'Gemma is working locally on this device.',
                                     style: TextStyle(
                                       color: tokens.inkMuted,
                                       fontSize: 14,
@@ -219,6 +227,11 @@ class _LoadingState extends ConsumerWidget {
                           ],
                         ),
                         const SizedBox(height: 26),
+                        _ReasoningRunPanel(
+                          enabled: thinkingMode,
+                          progress: progress,
+                        ),
+                        const SizedBox(height: 18),
                         AnimatedSwitcher(
                           duration: const Duration(milliseconds: 260),
                           switchInCurve: Curves.easeOutCubic,
@@ -289,6 +302,105 @@ class _LoadingState extends ConsumerWidget {
       LessonGenerationPhase.buildingGlossary => 3,
       LessonGenerationPhase.checkingKit || LessonGenerationPhase.complete => 4,
     };
+  }
+}
+
+class _ReasoningRunPanel extends StatelessWidget {
+  const _ReasoningRunPanel({required this.enabled, required this.progress});
+
+  final bool enabled;
+  final LessonGenerationProgress progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final text = enabled
+        ? progress.reasoningPreview.isEmpty
+              ? 'Planning the classroom structure before writing the final kit.'
+              : progress.reasoningPreview
+        : 'Fast direct generation for this run.';
+    final countLabel = progress.reasoningCharacters == 1
+        ? '1 reasoning character'
+        : '${progress.reasoningCharacters} reasoning characters';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: tokens.surfaceMuted,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: tokens.oat),
+      ),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: tokens.surface,
+              borderRadius: BorderRadius.circular(7),
+              border: Border.all(color: tokens.oat),
+            ),
+            child: enabled && !progress.hasReasoning
+                ? const CupertinoActivityIndicator(radius: 8)
+                : Icon(
+                    AppIcons.idea(context),
+                    color: enabled ? tokens.ink : tokens.inkMuted,
+                    size: 17,
+                  ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      enabled ? 'REASONING ON' : 'REASONING OFF',
+                      style: TextStyle(
+                        color: tokens.inkSubtle,
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                    if (enabled && progress.hasReasoning) ...[
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          countLabel,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: tokens.inkMuted,
+                            fontSize: 12,
+                            height: 1.2,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  text,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: tokens.ink,
+                    fontSize: 13,
+                    height: 1.45,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

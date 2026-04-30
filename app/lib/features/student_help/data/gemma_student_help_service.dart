@@ -5,6 +5,8 @@ import '../../../core/model/gemma_generation_settings.dart';
 import '../../../core/model/gemma_model_installer.dart';
 import '../../lesson_kit/domain/entities/lesson_kit.dart';
 
+typedef StudentHelpThinkingCallback = void Function(String content);
+
 class GemmaStudentHelpService {
   GemmaStudentHelpService({
     GemmaModelInstaller? installer,
@@ -19,26 +21,28 @@ class GemmaStudentHelpService {
     required String question,
     required AppLanguage language,
     LessonKit? lessonKit,
+    StudentHelpThinkingCallback? onThinking,
   }) async {
     await _installer.ensureInstalled();
     final settings =
         _settingsReader?.call() ?? GemmaGenerationSettings.defaults;
 
     final model = await FlutterGemma.getActiveModel(
-      maxTokens: 768,
-      preferredBackend: PreferredBackend.gpu,
-    );
-
-    final chat = await model.createChat(
-      systemInstruction: _systemPrompt(language),
-      temperature: settings.temperature,
-      randomSeed: settings.randomSeed,
-      topK: settings.topK,
-      topP: settings.topP,
-      isThinking: settings.thinkingMode,
+      maxTokens: 2048,
+      preferredBackend: PreferredBackend.cpu,
     );
 
     try {
+      final chat = await model.createChat(
+        systemInstruction: _systemPrompt(language),
+        temperature: settings.temperature,
+        randomSeed: settings.randomSeed,
+        topK: settings.topK,
+        topP: settings.topP,
+        tokenBuffer: 128,
+        isThinking: settings.thinkingMode,
+      );
+
       await chat.addQueryChunk(
         Message.text(
           text: _questionPrompt(question: question, lessonKit: lessonKit),
@@ -48,7 +52,11 @@ class GemmaStudentHelpService {
 
       final buffer = StringBuffer();
       await for (final chunk in chat.generateChatResponseAsync()) {
-        if (chunk is TextResponse) buffer.write(chunk.token);
+        if (chunk is ThinkingResponse) {
+          onThinking?.call(chunk.content);
+        } else if (chunk is TextResponse) {
+          buffer.write(chunk.token);
+        }
       }
 
       final response = buffer.toString().trim();

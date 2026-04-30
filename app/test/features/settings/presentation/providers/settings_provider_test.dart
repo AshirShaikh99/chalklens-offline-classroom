@@ -10,7 +10,7 @@ void main() {
     expect(GemmaGenerationSettings.defaults.topK, 64);
     expect(GemmaGenerationSettings.defaults.topP, 0.95);
     expect(GemmaGenerationSettings.defaults.randomSeed, 1);
-    expect(GemmaGenerationSettings.defaults.thinkingMode, isFalse);
+    expect(GemmaGenerationSettings.defaults.thinkingMode, isTrue);
   });
 
   test('app defaults to the dark theme', () {

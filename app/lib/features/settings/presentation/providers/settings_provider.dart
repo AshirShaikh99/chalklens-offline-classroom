@@ -1,28 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/constants/languages.dart';
 import '../../../../core/model/gemma_generation_settings.dart';
 
 /// Session settings used by the current testing build.
 class AppSettings {
   const AppSettings({
-    this.defaultLanguage = AppLanguage.english,
     this.themeMode = ThemeMode.dark,
     this.modelSettings = GemmaGenerationSettings.defaults,
   });
 
-  final AppLanguage defaultLanguage;
   final ThemeMode themeMode;
   final GemmaGenerationSettings modelSettings;
 
   AppSettings copyWith({
-    AppLanguage? defaultLanguage,
     ThemeMode? themeMode,
     GemmaGenerationSettings? modelSettings,
   }) {
     return AppSettings(
-      defaultLanguage: defaultLanguage ?? this.defaultLanguage,
       themeMode: themeMode ?? this.themeMode,
       modelSettings: modelSettings ?? this.modelSettings,
     );
@@ -33,7 +28,6 @@ class SettingsNotifier extends Notifier<AppSettings> {
   @override
   AppSettings build() => const AppSettings();
 
-  void setLanguage(AppLanguage l) => state = state.copyWith(defaultLanguage: l);
   void setThemeMode(ThemeMode m) => state = state.copyWith(themeMode: m);
 
   void setTemperature(double value) {
