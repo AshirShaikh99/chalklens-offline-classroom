@@ -1,0 +1,346 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// coverage:ignore-file
+// ignore_for_file: type=lint
+// ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
+
+part of 'lesson_kit_model.dart';
+
+// **************************************************************************
+// FreezedGenerator
+// **************************************************************************
+
+// dart format off
+T _$identity<T>(T value) => value;
+
+/// @nodoc
+mixin _$LessonKitModel {
+
+ String get lessonTitle; String get grade; String get subject; AppLanguage get language; List<String> get learningObjectives; String get simpleExplanation; List<String> get blackboardNotes; String get localExample; List<QuizQuestionModel> get oralQuiz; String get groupActivity; List<String> get homework; List<GlossaryTermModel> get glossary; String get easyVersion; double get confidence;
+/// Create a copy of LessonKitModel
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$LessonKitModelCopyWith<LessonKitModel> get copyWith => _$LessonKitModelCopyWithImpl<LessonKitModel>(this as LessonKitModel, _$identity);
+
+  /// Serializes this LessonKitModel to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is LessonKitModel&&(identical(other.lessonTitle, lessonTitle) || other.lessonTitle == lessonTitle)&&(identical(other.grade, grade) || other.grade == grade)&&(identical(other.subject, subject) || other.subject == subject)&&(identical(other.language, language) || other.language == language)&&const DeepCollectionEquality().equals(other.learningObjectives, learningObjectives)&&(identical(other.simpleExplanation, simpleExplanation) || other.simpleExplanation == simpleExplanation)&&const DeepCollectionEquality().equals(other.blackboardNotes, blackboardNotes)&&(identical(other.localExample, localExample) || other.localExample == localExample)&&const DeepCollectionEquality().equals(other.oralQuiz, oralQuiz)&&(identical(other.groupActivity, groupActivity) || other.groupActivity == groupActivity)&&const DeepCollectionEquality().equals(other.homework, homework)&&const DeepCollectionEquality().equals(other.glossary, glossary)&&(identical(other.easyVersion, easyVersion) || other.easyVersion == easyVersion)&&(identical(other.confidence, confidence) || other.confidence == confidence));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,lessonTitle,grade,subject,language,const DeepCollectionEquality().hash(learningObjectives),simpleExplanation,const DeepCollectionEquality().hash(blackboardNotes),localExample,const DeepCollectionEquality().hash(oralQuiz),groupActivity,const DeepCollectionEquality().hash(homework),const DeepCollectionEquality().hash(glossary),easyVersion,confidence);
+
+@override
+String toString() {
+  return 'LessonKitModel(lessonTitle: $lessonTitle, grade: $grade, subject: $subject, language: $language, learningObjectives: $learningObjectives, simpleExplanation: $simpleExplanation, blackboardNotes: $blackboardNotes, localExample: $localExample, oralQuiz: $oralQuiz, groupActivity: $groupActivity, homework: $homework, glossary: $glossary, easyVersion: $easyVersion, confidence: $confidence)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $LessonKitModelCopyWith<$Res>  {
+  factory $LessonKitModelCopyWith(LessonKitModel value, $Res Function(LessonKitModel) _then) = _$LessonKitModelCopyWithImpl;
+@useResult
+$Res call({
+ String lessonTitle, String grade, String subject, AppLanguage language, List<String> learningObjectives, String simpleExplanation, List<String> blackboardNotes, String localExample, List<QuizQuestionModel> oralQuiz, String groupActivity, List<String> homework, List<GlossaryTermModel> glossary, String easyVersion, double confidence
+});
+
+
+
+
+}
+/// @nodoc
+class _$LessonKitModelCopyWithImpl<$Res>
+    implements $LessonKitModelCopyWith<$Res> {
+  _$LessonKitModelCopyWithImpl(this._self, this._then);
+
+  final LessonKitModel _self;
+  final $Res Function(LessonKitModel) _then;
+
+/// Create a copy of LessonKitModel
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? lessonTitle = null,Object? grade = null,Object? subject = null,Object? language = null,Object? learningObjectives = null,Object? simpleExplanation = null,Object? blackboardNotes = null,Object? localExample = null,Object? oralQuiz = null,Object? groupActivity = null,Object? homework = null,Object? glossary = null,Object? easyVersion = null,Object? confidence = null,}) {
+  return _then(_self.copyWith(
+lessonTitle: null == lessonTitle ? _self.lessonTitle : lessonTitle // ignore: cast_nullable_to_non_nullable
+as String,grade: null == grade ? _self.grade : grade // ignore: cast_nullable_to_non_nullable
+as String,subject: null == subject ? _self.subject : subject // ignore: cast_nullable_to_non_nullable
+as String,language: null == language ? _self.language : language // ignore: cast_nullable_to_non_nullable
+as AppLanguage,learningObjectives: null == learningObjectives ? _self.learningObjectives : learningObjectives // ignore: cast_nullable_to_non_nullable
+as List<String>,simpleExplanation: null == simpleExplanation ? _self.simpleExplanation : simpleExplanation // ignore: cast_nullable_to_non_nullable
+as String,blackboardNotes: null == blackboardNotes ? _self.blackboardNotes : blackboardNotes // ignore: cast_nullable_to_non_nullable
+as List<String>,localExample: null == localExample ? _self.localExample : localExample // ignore: cast_nullable_to_non_nullable
+as String,oralQuiz: null == oralQuiz ? _self.oralQuiz : oralQuiz // ignore: cast_nullable_to_non_nullable
+as List<QuizQuestionModel>,groupActivity: null == groupActivity ? _self.groupActivity : groupActivity // ignore: cast_nullable_to_non_nullable
+as String,homework: null == homework ? _self.homework : homework // ignore: cast_nullable_to_non_nullable
+as List<String>,glossary: null == glossary ? _self.glossary : glossary // ignore: cast_nullable_to_non_nullable
+as List<GlossaryTermModel>,easyVersion: null == easyVersion ? _self.easyVersion : easyVersion // ignore: cast_nullable_to_non_nullable
+as String,confidence: null == confidence ? _self.confidence : confidence // ignore: cast_nullable_to_non_nullable
+as double,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [LessonKitModel].
+extension LessonKitModelPatterns on LessonKitModel {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _LessonKitModel value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _LessonKitModel() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _LessonKitModel value)  $default,){
+final _that = this;
+switch (_that) {
+case _LessonKitModel():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _LessonKitModel value)?  $default,){
+final _that = this;
+switch (_that) {
+case _LessonKitModel() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String lessonTitle,  String grade,  String subject,  AppLanguage language,  List<String> learningObjectives,  String simpleExplanation,  List<String> blackboardNotes,  String localExample,  List<QuizQuestionModel> oralQuiz,  String groupActivity,  List<String> homework,  List<GlossaryTermModel> glossary,  String easyVersion,  double confidence)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _LessonKitModel() when $default != null:
+return $default(_that.lessonTitle,_that.grade,_that.subject,_that.language,_that.learningObjectives,_that.simpleExplanation,_that.blackboardNotes,_that.localExample,_that.oralQuiz,_that.groupActivity,_that.homework,_that.glossary,_that.easyVersion,_that.confidence);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String lessonTitle,  String grade,  String subject,  AppLanguage language,  List<String> learningObjectives,  String simpleExplanation,  List<String> blackboardNotes,  String localExample,  List<QuizQuestionModel> oralQuiz,  String groupActivity,  List<String> homework,  List<GlossaryTermModel> glossary,  String easyVersion,  double confidence)  $default,) {final _that = this;
+switch (_that) {
+case _LessonKitModel():
+return $default(_that.lessonTitle,_that.grade,_that.subject,_that.language,_that.learningObjectives,_that.simpleExplanation,_that.blackboardNotes,_that.localExample,_that.oralQuiz,_that.groupActivity,_that.homework,_that.glossary,_that.easyVersion,_that.confidence);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String lessonTitle,  String grade,  String subject,  AppLanguage language,  List<String> learningObjectives,  String simpleExplanation,  List<String> blackboardNotes,  String localExample,  List<QuizQuestionModel> oralQuiz,  String groupActivity,  List<String> homework,  List<GlossaryTermModel> glossary,  String easyVersion,  double confidence)?  $default,) {final _that = this;
+switch (_that) {
+case _LessonKitModel() when $default != null:
+return $default(_that.lessonTitle,_that.grade,_that.subject,_that.language,_that.learningObjectives,_that.simpleExplanation,_that.blackboardNotes,_that.localExample,_that.oralQuiz,_that.groupActivity,_that.homework,_that.glossary,_that.easyVersion,_that.confidence);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _LessonKitModel extends LessonKitModel {
+  const _LessonKitModel({required this.lessonTitle, required this.grade, required this.subject, required this.language, final  List<String> learningObjectives = const <String>[], required this.simpleExplanation, final  List<String> blackboardNotes = const <String>[], this.localExample = '', final  List<QuizQuestionModel> oralQuiz = const <QuizQuestionModel>[], this.groupActivity = '', final  List<String> homework = const <String>[], final  List<GlossaryTermModel> glossary = const <GlossaryTermModel>[], this.easyVersion = '', this.confidence = 0.0}): _learningObjectives = learningObjectives,_blackboardNotes = blackboardNotes,_oralQuiz = oralQuiz,_homework = homework,_glossary = glossary,super._();
+  factory _LessonKitModel.fromJson(Map<String, dynamic> json) => _$LessonKitModelFromJson(json);
+
+@override final  String lessonTitle;
+@override final  String grade;
+@override final  String subject;
+@override final  AppLanguage language;
+ final  List<String> _learningObjectives;
+@override@JsonKey() List<String> get learningObjectives {
+  if (_learningObjectives is EqualUnmodifiableListView) return _learningObjectives;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_learningObjectives);
+}
+
+@override final  String simpleExplanation;
+ final  List<String> _blackboardNotes;
+@override@JsonKey() List<String> get blackboardNotes {
+  if (_blackboardNotes is EqualUnmodifiableListView) return _blackboardNotes;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_blackboardNotes);
+}
+
+@override@JsonKey() final  String localExample;
+ final  List<QuizQuestionModel> _oralQuiz;
+@override@JsonKey() List<QuizQuestionModel> get oralQuiz {
+  if (_oralQuiz is EqualUnmodifiableListView) return _oralQuiz;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_oralQuiz);
+}
+
+@override@JsonKey() final  String groupActivity;
+ final  List<String> _homework;
+@override@JsonKey() List<String> get homework {
+  if (_homework is EqualUnmodifiableListView) return _homework;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_homework);
+}
+
+ final  List<GlossaryTermModel> _glossary;
+@override@JsonKey() List<GlossaryTermModel> get glossary {
+  if (_glossary is EqualUnmodifiableListView) return _glossary;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_glossary);
+}
+
+@override@JsonKey() final  String easyVersion;
+@override@JsonKey() final  double confidence;
+
+/// Create a copy of LessonKitModel
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$LessonKitModelCopyWith<_LessonKitModel> get copyWith => __$LessonKitModelCopyWithImpl<_LessonKitModel>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$LessonKitModelToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _LessonKitModel&&(identical(other.lessonTitle, lessonTitle) || other.lessonTitle == lessonTitle)&&(identical(other.grade, grade) || other.grade == grade)&&(identical(other.subject, subject) || other.subject == subject)&&(identical(other.language, language) || other.language == language)&&const DeepCollectionEquality().equals(other._learningObjectives, _learningObjectives)&&(identical(other.simpleExplanation, simpleExplanation) || other.simpleExplanation == simpleExplanation)&&const DeepCollectionEquality().equals(other._blackboardNotes, _blackboardNotes)&&(identical(other.localExample, localExample) || other.localExample == localExample)&&const DeepCollectionEquality().equals(other._oralQuiz, _oralQuiz)&&(identical(other.groupActivity, groupActivity) || other.groupActivity == groupActivity)&&const DeepCollectionEquality().equals(other._homework, _homework)&&const DeepCollectionEquality().equals(other._glossary, _glossary)&&(identical(other.easyVersion, easyVersion) || other.easyVersion == easyVersion)&&(identical(other.confidence, confidence) || other.confidence == confidence));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,lessonTitle,grade,subject,language,const DeepCollectionEquality().hash(_learningObjectives),simpleExplanation,const DeepCollectionEquality().hash(_blackboardNotes),localExample,const DeepCollectionEquality().hash(_oralQuiz),groupActivity,const DeepCollectionEquality().hash(_homework),const DeepCollectionEquality().hash(_glossary),easyVersion,confidence);
+
+@override
+String toString() {
+  return 'LessonKitModel(lessonTitle: $lessonTitle, grade: $grade, subject: $subject, language: $language, learningObjectives: $learningObjectives, simpleExplanation: $simpleExplanation, blackboardNotes: $blackboardNotes, localExample: $localExample, oralQuiz: $oralQuiz, groupActivity: $groupActivity, homework: $homework, glossary: $glossary, easyVersion: $easyVersion, confidence: $confidence)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$LessonKitModelCopyWith<$Res> implements $LessonKitModelCopyWith<$Res> {
+  factory _$LessonKitModelCopyWith(_LessonKitModel value, $Res Function(_LessonKitModel) _then) = __$LessonKitModelCopyWithImpl;
+@override @useResult
+$Res call({
+ String lessonTitle, String grade, String subject, AppLanguage language, List<String> learningObjectives, String simpleExplanation, List<String> blackboardNotes, String localExample, List<QuizQuestionModel> oralQuiz, String groupActivity, List<String> homework, List<GlossaryTermModel> glossary, String easyVersion, double confidence
+});
+
+
+
+
+}
+/// @nodoc
+class __$LessonKitModelCopyWithImpl<$Res>
+    implements _$LessonKitModelCopyWith<$Res> {
+  __$LessonKitModelCopyWithImpl(this._self, this._then);
+
+  final _LessonKitModel _self;
+  final $Res Function(_LessonKitModel) _then;
+
+/// Create a copy of LessonKitModel
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? lessonTitle = null,Object? grade = null,Object? subject = null,Object? language = null,Object? learningObjectives = null,Object? simpleExplanation = null,Object? blackboardNotes = null,Object? localExample = null,Object? oralQuiz = null,Object? groupActivity = null,Object? homework = null,Object? glossary = null,Object? easyVersion = null,Object? confidence = null,}) {
+  return _then(_LessonKitModel(
+lessonTitle: null == lessonTitle ? _self.lessonTitle : lessonTitle // ignore: cast_nullable_to_non_nullable
+as String,grade: null == grade ? _self.grade : grade // ignore: cast_nullable_to_non_nullable
+as String,subject: null == subject ? _self.subject : subject // ignore: cast_nullable_to_non_nullable
+as String,language: null == language ? _self.language : language // ignore: cast_nullable_to_non_nullable
+as AppLanguage,learningObjectives: null == learningObjectives ? _self._learningObjectives : learningObjectives // ignore: cast_nullable_to_non_nullable
+as List<String>,simpleExplanation: null == simpleExplanation ? _self.simpleExplanation : simpleExplanation // ignore: cast_nullable_to_non_nullable
+as String,blackboardNotes: null == blackboardNotes ? _self._blackboardNotes : blackboardNotes // ignore: cast_nullable_to_non_nullable
+as List<String>,localExample: null == localExample ? _self.localExample : localExample // ignore: cast_nullable_to_non_nullable
+as String,oralQuiz: null == oralQuiz ? _self._oralQuiz : oralQuiz // ignore: cast_nullable_to_non_nullable
+as List<QuizQuestionModel>,groupActivity: null == groupActivity ? _self.groupActivity : groupActivity // ignore: cast_nullable_to_non_nullable
+as String,homework: null == homework ? _self._homework : homework // ignore: cast_nullable_to_non_nullable
+as List<String>,glossary: null == glossary ? _self._glossary : glossary // ignore: cast_nullable_to_non_nullable
+as List<GlossaryTermModel>,easyVersion: null == easyVersion ? _self.easyVersion : easyVersion // ignore: cast_nullable_to_non_nullable
+as String,confidence: null == confidence ? _self.confidence : confidence // ignore: cast_nullable_to_non_nullable
+as double,
+  ));
+}
+
+
+}
+
+// dart format on

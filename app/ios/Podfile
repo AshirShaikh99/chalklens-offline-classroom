@@ -1,0 +1,94 @@
+# flutter_gemma requires iOS 16+ for LiteRT-LM Metal acceleration
+platform :ios, '16.0'
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_ios_podfile_setup
+
+target 'Runner' do
+  use_frameworks! :linkage => :static
+
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+  end
+
+  # LiteRT-LM loads these libraries by basename at runtime. Native Assets
+  # bundles them as frameworks, so expose the basename dylinks in the host app.
+  installer.aggregate_targets.each do |aggregate_target|
+    aggregate_target.user_targets.each do |user_target|
+      phase = user_target.shell_script_build_phases.find { |p| p.name == '[flutter_gemma] Setup LiteRT-LM iOS' }
+      phase ||= user_target.new_shell_script_build_phase('[flutter_gemma] Setup LiteRT-LM iOS')
+      phase.shell_script = <<~SHELL
+        set -e
+        FRAMEWORKS="${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Frameworks"
+        if [ ! -d "${FRAMEWORKS}" ]; then
+          echo "[flutter_gemma] no Frameworks/ in ${PRODUCT_NAME}.app - skipping"
+          exit 0
+        fi
+        for base in LiteRtMetalAccelerator GemmaModelConstraintProvider; do
+          src="${base}.framework/${base}"
+          if [ ! -e "${FRAMEWORKS}/${src}" ]; then
+            echo "[flutter_gemma] ${FRAMEWORKS}/${src} missing - Native Assets did not bundle it"
+            continue
+          fi
+          dst="${FRAMEWORKS}/lib${base}.dylib"
+          if [ ! -e "${dst}" ]; then
+            ln -sf "${src}" "${dst}"
+            echo "[flutter_gemma] symlinked lib${base}.dylib -> ${src}"
+          fi
+        done
+
+        if [ "${CODE_SIGNING_ALLOWED:-YES}" = "NO" ] || [ -z "${EXPANDED_CODE_SIGN_IDENTITY:-}" ]; then
+          echo "[flutter_gemma] code signing unavailable - skipping framework re-sign"
+          exit 0
+        fi
+
+        for framework in "${FRAMEWORKS}"/*.framework; do
+          [ -d "${framework}" ] || continue
+
+          if command -v xattr >/dev/null 2>&1; then
+            xattr -cr "${framework}" || true
+          fi
+
+          executable=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "${framework}/Info.plist" 2>/dev/null || basename "${framework}" .framework)
+          if [ ! -e "${framework}/${executable}" ]; then
+            echo "[flutter_gemma] ${framework} has no executable ${executable} - skipping"
+            continue
+          fi
+
+          /usr/bin/codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY}" --timestamp=none --preserve-metadata=identifier,entitlements,flags ${OTHER_CODE_SIGN_FLAGS:-} "${framework}"
+          echo "[flutter_gemma] re-signed $(basename "${framework}")"
+        done
+      SHELL
+    end
+  end
+end

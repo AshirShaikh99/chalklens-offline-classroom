@@ -1,0 +1,35 @@
+# OS/editor noise
+.DS_Store
+.idea/
+.vscode/
+*.iml
+
+# Flutter/Dart
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/build/
+**/coverage/
+**/doc/api/
+
+# Android/iOS generated artifacts
+**/.gradle/
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+**/ios/Pods/
+**/ios/build/
+**/ios/Flutter/.last_build_id
+
+# Large local model files
+*.litertlm
+*.task
+*.bin
+*.gguf
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+
