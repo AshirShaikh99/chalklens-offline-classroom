@@ -70,6 +70,8 @@ class GemmaModelInstaller {
   static const String _definedModelPath = String.fromEnvironment(
     'GEMMA_MODEL_PATH',
   );
+  /// Put the model download URL here so the app fetches it on first launch.
+  /// Or pass it at build time: --dart-define=GEMMA_MODEL_URL=https://...
   static const String defaultDownloadUrl = String.fromEnvironment(
     'GEMMA_MODEL_URL',
     defaultValue: '',

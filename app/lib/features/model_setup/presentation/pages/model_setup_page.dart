@@ -437,7 +437,8 @@ class _DownloadPanel extends StatelessWidget {
             const SizedBox(height: 12),
           ] else ...[
             Text(
-              'Ready from the configured model URL. Keep the app installed to keep this download.',
+              'Gemma 4 E2B · 2.6 GB · one-time download. ChalkLens runs '
+              'fully offline after this — no internet needed to teach.',
               style: TextStyle(
                 color: context.tokens.inkMuted,
                 fontSize: 13,

@@ -133,9 +133,7 @@ class ModelSetupNotifier extends AsyncNotifier<ModelSetupState> {
       return;
     }
     final host = uri.host.toLowerCase();
-    final allowed = _allowedDownloadHosts.any(
-      (h) => host == h || host.endsWith('.$h'),
-    );
+    final allowed = _isHostAllowed(host);
     if (!allowed) {
       _setNotice(
         'Downloads are only allowed from trusted hosts '
@@ -149,6 +147,20 @@ class ModelSetupNotifier extends AsyncNotifier<ModelSetupState> {
       operation: () =>
           _installer.downloadModelFile(uri, onProgress: _setProgress),
     );
+  }
+
+  /// A URL is accepted when its host is on the static allowlist OR matches
+  /// the host of the build-time configured URL. The latter lets a release
+  /// build supply its own host without listing it in source.
+  bool _isHostAllowed(String host) {
+    final staticMatch = _allowedDownloadHosts.any(
+      (h) => host == h || host.endsWith('.$h'),
+    );
+    if (staticMatch) return true;
+
+    final configured = Uri.tryParse(GemmaModelInstaller.defaultDownloadUrl);
+    if (configured == null || configured.host.isEmpty) return false;
+    return configured.host.toLowerCase() == host;
   }
 
   Future<void> _runInstall({
