@@ -20,6 +20,7 @@ class GenerateLessonKit implements UseCase<LessonKit, GenerateLessonKitParams> {
       passage: params.passage,
       imageBytes: params.imageBytes,
       onProgress: params.onProgress,
+      cancelSignal: params.cancelSignal,
     );
   }
 }
@@ -30,10 +31,12 @@ class GenerateLessonKitParams {
     this.passage,
     this.imageBytes,
     this.onProgress,
+    this.cancelSignal,
   });
 
   final LessonContext context;
   final String? passage;
   final Uint8List? imageBytes;
   final LessonGenerationProgressCallback? onProgress;
+  final Future<void>? cancelSignal;
 }

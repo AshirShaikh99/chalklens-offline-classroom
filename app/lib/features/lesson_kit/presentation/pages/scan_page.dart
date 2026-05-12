@@ -440,7 +440,7 @@ class _ClassSetupPanel extends StatelessWidget {
             onChanged: onLanguageChanged,
           ),
           const SizedBox(height: 22),
-          _DurationSlider(value: classDuration, onChanged: onDurationChanged),
+          _DurationPicker(value: classDuration, onChanged: onDurationChanged),
           const SizedBox(height: 18),
           _StudentLevelSelector(
             value: studentLevel,
@@ -723,51 +723,217 @@ class _CaptureArea extends StatelessWidget {
   }
 }
 
-class _DurationSlider extends StatelessWidget {
-  const _DurationSlider({required this.value, required this.onChanged});
+class _DurationPicker extends StatelessWidget {
+  const _DurationPicker({required this.value, required this.onChanged});
 
   final double value;
   final ValueChanged<double> onChanged;
 
+  // 15-90 minutes in 5-minute steps. Matches the divisions the slider used.
+  static const List<int> _options = [
+    15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90,
+  ];
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final current = value.round();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Text(
-              'LESSON TIME',
-              style: TextStyle(
-                color: tokens.inkSubtle,
-                fontFamily: 'monospace',
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0,
-              ),
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _openPicker(context, current),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: tokens.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: tokens.oat),
             ),
-            const Spacer(),
-            Text(
-              '${value.round()} min',
-              style: TextStyle(
-                color: tokens.ink,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0,
-              ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Class length',
+                        style: TextStyle(
+                          color: tokens.inkMuted,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        '$current minutes',
+                        style: TextStyle(
+                          color: tokens.ink,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          height: 1.25,
+                          letterSpacing: 0,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  CupertinoIcons.chevron_up_chevron_down,
+                  size: 15,
+                  color: tokens.inkSubtle,
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-        AdaptiveSlider(
-          value: value,
-          min: 15,
-          max: 90,
-          divisions: 15,
-          onChanged: onChanged,
+        const SizedBox(height: 6),
+        Text(
+          'How long is one period? Gemma fits the activities to the time.',
+          style: TextStyle(
+            color: tokens.inkMuted,
+            fontSize: 12,
+            height: 1.35,
+            letterSpacing: 0,
+          ),
         ),
       ],
     );
+  }
+
+  Future<void> _openPicker(BuildContext context, int current) async {
+    final initialIndex = _options
+        .indexOf(current)
+        .clamp(0, _options.length - 1);
+    var draft = _options[initialIndex];
+
+    if (useCupertino(context)) {
+      final tokens = context.tokens;
+      await showCupertinoModalPopup<void>(
+        context: context,
+        builder: (sheetContext) {
+          return Container(
+            height: 296,
+            decoration: BoxDecoration(
+              color: tokens.surface,
+              border: Border(top: BorderSide(color: tokens.oat)),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border(bottom: BorderSide(color: tokens.oat)),
+                    ),
+                    child: Row(
+                      children: [
+                        CupertinoButton(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          onPressed: () => Navigator.of(sheetContext).pop(),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(color: tokens.inkMuted),
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          'Class length',
+                          style: TextStyle(
+                            color: tokens.ink,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                        const Spacer(),
+                        CupertinoButton(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          onPressed: () {
+                            onChanged(draft.toDouble());
+                            Navigator.of(sheetContext).pop();
+                          },
+                          child: Text(
+                            'Done',
+                            style: TextStyle(
+                              color: tokens.ink,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: CupertinoPicker(
+                      itemExtent: 36,
+                      magnification: 1.05,
+                      squeeze: 1.1,
+                      backgroundColor: tokens.surface,
+                      scrollController: FixedExtentScrollController(
+                        initialItem: initialIndex,
+                      ),
+                      onSelectedItemChanged: (i) => draft = _options[i],
+                      children: [
+                        for (final m in _options)
+                          Center(
+                            child: Text(
+                              '$m min',
+                              style: TextStyle(
+                                color: tokens.ink,
+                                fontSize: 20,
+                                letterSpacing: 0,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures(),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+      return;
+    }
+
+    // Material fallback: simple radio-style list in a bottom sheet.
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: context.tokens.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          children: [
+            for (final m in _options)
+              ListTile(
+                title: Text('$m minutes'),
+                trailing: m == current
+                    ? Icon(Icons.check, color: context.tokens.ink)
+                    : null,
+                onTap: () => Navigator.of(sheetContext).pop(m),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (picked != null) onChanged(picked.toDouble());
   }
 }
 
@@ -784,21 +950,30 @@ class _StudentLevelSelector extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'HELP LEVEL',
+          'Difficulty for the class',
           style: TextStyle(
-            color: tokens.inkSubtle,
-            fontFamily: 'monospace',
-            fontSize: 11,
+            color: tokens.ink,
+            fontSize: 15,
             fontWeight: FontWeight.w600,
             letterSpacing: 0,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         AdaptiveSegmentedControl<StudentLevel>(
           value: value,
           values: StudentLevel.values,
           labelOf: _levelLabel,
           onChanged: onChanged,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          _levelDescription(value),
+          style: TextStyle(
+            color: tokens.inkMuted,
+            fontSize: 12,
+            height: 1.35,
+            letterSpacing: 0,
+          ),
         ),
       ],
     );
@@ -806,9 +981,20 @@ class _StudentLevelSelector extends StatelessWidget {
 
   String _levelLabel(StudentLevel level) {
     return switch (level) {
-      StudentLevel.easy => 'Extra help',
-      StudentLevel.standard => 'Regular',
-      StudentLevel.advanced => 'Challenge',
+      StudentLevel.easy => 'Easier',
+      StudentLevel.standard => 'Standard',
+      StudentLevel.advanced => 'Harder',
+    };
+  }
+
+  String _levelDescription(StudentLevel level) {
+    return switch (level) {
+      StudentLevel.easy =>
+        'Shorter sentences and gentler examples for students who need extra support.',
+      StudentLevel.standard =>
+        'Balanced lesson aimed at the typical student in the class.',
+      StudentLevel.advanced =>
+        'Sharper questions and stretch tasks for students ready for a challenge.',
     };
   }
 }

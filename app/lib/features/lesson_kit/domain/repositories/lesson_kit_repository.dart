@@ -15,5 +15,6 @@ abstract class LessonKitRepository {
     String? passage,
     Uint8List? imageBytes,
     LessonGenerationProgressCallback? onProgress,
+    Future<void>? cancelSignal,
   });
 }

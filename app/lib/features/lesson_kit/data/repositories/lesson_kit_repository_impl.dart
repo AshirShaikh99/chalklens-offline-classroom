@@ -21,12 +21,14 @@ class LessonKitRepositoryImpl implements LessonKitRepository {
     String? passage,
     Uint8List? imageBytes,
     LessonGenerationProgressCallback? onProgress,
+    Future<void>? cancelSignal,
   }) async {
     final model = await datasource.generate(
       context: LessonContextModel.fromEntity(context),
       passage: passage,
       imageBytes: imageBytes,
       onProgress: onProgress,
+      cancelSignal: cancelSignal,
     );
     return model.toEntity();
   }

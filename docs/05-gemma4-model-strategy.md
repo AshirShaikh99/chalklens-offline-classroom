@@ -46,6 +46,12 @@ We should demonstrate:
 
 Gemma should retrieve from a local curriculum and pedagogy pack before answering.
 
+Current implementation starts with a compact local teaching pack that is
+selected from grade, subject, student level, and any pasted passage text. It
+adds offline guidance for source concepts, likely misconceptions, low-resource
+activities, teacher moves, and quick checks before Gemma produces the final
+LessonKit JSON.
+
 Example retrieval documents:
 
 - "Class 5 Science: Water Cycle"

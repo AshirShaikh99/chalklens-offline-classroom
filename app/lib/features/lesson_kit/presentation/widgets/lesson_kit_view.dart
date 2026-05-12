@@ -21,6 +21,14 @@ class LessonKitView extends StatelessWidget {
       children: [
         _Hero(kit: kit),
         const SizedBox(height: 32),
+        if (_hasGrounding(kit)) ...[
+          LessonSection(
+            icon: AppIcons.idea(context),
+            title: 'Teacher strategy',
+            child: _TeachingPackSummary(kit: kit),
+          ),
+          const SizedBox(height: 12),
+        ],
         if (kit.learningObjectives.isNotEmpty) ...[
           LessonSection(
             icon: AppIcons.objective(context),
@@ -99,6 +107,80 @@ class LessonKitView extends StatelessWidget {
         ],
         if (kit.easyVersion.isNotEmpty) _EasyVersionCard(text: kit.easyVersion),
       ],
+    );
+  }
+}
+
+bool _hasGrounding(LessonKit kit) {
+  return kit.sourceConcepts.isNotEmpty ||
+      kit.likelyMisconceptions.isNotEmpty ||
+      kit.teacherMoves.isNotEmpty ||
+      kit.checksForUnderstanding.isNotEmpty;
+}
+
+class _TeachingPackSummary extends StatelessWidget {
+  const _TeachingPackSummary({required this.kit});
+
+  final LessonKit kit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        if (kit.sourceConcepts.isNotEmpty)
+          _GroundingBlock(label: 'Key ideas', items: kit.sourceConcepts),
+        if (kit.likelyMisconceptions.isNotEmpty)
+          _GroundingBlock(
+            label: 'Misconceptions to check',
+            items: kit.likelyMisconceptions,
+          ),
+        if (kit.teacherMoves.isNotEmpty)
+          _GroundingBlock(label: 'Teacher moves', items: kit.teacherMoves),
+        if (kit.checksForUnderstanding.isNotEmpty)
+          _GroundingBlock(
+            label: 'Quick checks',
+            items: kit.checksForUnderstanding,
+            isLast: true,
+          ),
+      ],
+    );
+  }
+}
+
+class _GroundingBlock extends StatelessWidget {
+  const _GroundingBlock({
+    required this.label,
+    required this.items,
+    this.isLast = false,
+  });
+
+  final String label;
+  final List<String> items;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Padding(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              color: tokens.inkSubtle,
+              fontFamily: 'monospace',
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              height: 1.2,
+              letterSpacing: 0,
+            ),
+          ),
+          const SizedBox(height: 8),
+          BulletList(items: items),
+        ],
+      ),
     );
   }
 }

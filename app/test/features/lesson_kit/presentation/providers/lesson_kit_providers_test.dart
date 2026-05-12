@@ -63,6 +63,33 @@ void main() {
     },
   );
 
+  test('clear ignores a stale in-flight generation result', () async {
+    final repository = _DelayedLessonKitRepository();
+    final container = ProviderContainer(
+      overrides: [lessonKitRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+
+    final generation = container
+        .read(lessonKitGenerationProvider.notifier)
+        .generate(
+          context: _context,
+          imageBytes: Uint8List.fromList(const [1, 2, 3]),
+        );
+
+    expect(container.read(lessonKitGenerationProvider).isLoading, isTrue);
+
+    container.read(lessonKitGenerationProvider.notifier).clear();
+    expect(container.read(lessonKitGenerationProvider).value, isNull);
+
+    repository.complete(_kit);
+    await generation;
+
+    final generated = container.read(lessonKitGenerationProvider);
+    expect(generated.hasValue, isTrue);
+    expect(generated.value, isNull);
+  });
+
   testWidgets('lesson page shows loading for the first generation', (
     tester,
   ) async {
@@ -93,6 +120,7 @@ void main() {
 
     expect(find.text('Generating lesson kit'), findsOneWidget);
     expect(find.text('Drafting the explanation'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 260));
     expect(find.text('24 tokens'), findsOneWidget);
     expect(find.text('No lesson kit yet'), findsNothing);
   });
@@ -122,6 +150,7 @@ class _DelayedLessonKitRepository implements LessonKitRepository {
     String? passage,
     Uint8List? imageBytes,
     LessonGenerationProgressCallback? onProgress,
+    Future<void>? cancelSignal,
   }) {
     callCount += 1;
     onProgress?.call(

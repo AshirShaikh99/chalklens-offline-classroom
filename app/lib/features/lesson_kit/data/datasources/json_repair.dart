@@ -5,11 +5,20 @@
 class JsonRepair {
   const JsonRepair._();
 
+  /// Defense-in-depth bound on the model output size we will scan. The
+  /// inference layer's max-tokens setting is the primary guard; this is a
+  /// belt-and-braces cap so a runaway generation cannot exhaust memory while
+  /// JSON repair walks the string.
+  static const int maxInputBytes = 256 * 1024;
+
   /// Returns a substring that is the first balanced JSON object found in
   /// [raw], or [raw] itself if no braces are detected. The result is not
   /// guaranteed to parse — callers must still try/catch.
   static String extractObject(String raw) {
-    final stripped = _stripCodeFences(raw).trim();
+    final input = raw.length > maxInputBytes
+        ? raw.substring(0, maxInputBytes)
+        : raw;
+    final stripped = _stripCodeFences(input).trim();
 
     final start = stripped.indexOf('{');
     if (start == -1) return stripped;

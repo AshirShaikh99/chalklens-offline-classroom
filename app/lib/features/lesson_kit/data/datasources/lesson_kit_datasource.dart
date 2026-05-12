@@ -12,10 +12,14 @@ abstract class LessonKitDatasource {
   /// Generate a kit. At least one of [passage] / [imageBytes] must be
   /// non-null. When [imageBytes] is present, the active Gemma model receives
   /// the image directly as multimodal input.
+  ///
+  /// If [cancelSignal] completes before generation finishes, the underlying
+  /// streaming session is cancelled and the call throws [GenerationCancelled].
   Future<LessonKitModel> generate({
     required LessonContextModel context,
     String? passage,
     Uint8List? imageBytes,
     LessonGenerationProgressCallback? onProgress,
+    Future<void>? cancelSignal,
   });
 }

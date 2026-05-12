@@ -13,6 +13,26 @@ _LessonKitModel _$LessonKitModelFromJson(
   grade: json['grade'] as String,
   subject: json['subject'] as String,
   language: $enumDecode(_$AppLanguageEnumMap, json['language']),
+  sourceConcepts:
+      (json['source_concepts'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const <String>[],
+  likelyMisconceptions:
+      (json['likely_misconceptions'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const <String>[],
+  teacherMoves:
+      (json['teacher_moves'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const <String>[],
+  checksForUnderstanding:
+      (json['checks_for_understanding'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList() ??
+      const <String>[],
   learningObjectives:
       (json['learning_objectives'] as List<dynamic>?)
           ?.map((e) => e as String)
@@ -49,6 +69,10 @@ Map<String, dynamic> _$LessonKitModelToJson(_LessonKitModel instance) =>
       'grade': instance.grade,
       'subject': instance.subject,
       'language': _$AppLanguageEnumMap[instance.language]!,
+      'source_concepts': instance.sourceConcepts,
+      'likely_misconceptions': instance.likelyMisconceptions,
+      'teacher_moves': instance.teacherMoves,
+      'checks_for_understanding': instance.checksForUnderstanding,
       'learning_objectives': instance.learningObjectives,
       'simple_explanation': instance.simpleExplanation,
       'blackboard_notes': instance.blackboardNotes,

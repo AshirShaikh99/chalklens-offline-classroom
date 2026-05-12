@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/errors/exceptions.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/adaptive_components.dart';
@@ -27,7 +28,12 @@ class LessonKitPage extends ConsumerWidget {
 
     return AdaptivePageScaffold(
       title: 'Lesson kit',
-      onBack: () => context.goNamed(AppRoute.home),
+      onBack: () {
+        // Cancel any in-flight generation so it doesn't keep producing
+        // tokens against a soon-to-be-torn-down model session.
+        ref.read(lessonKitGenerationProvider.notifier).clear();
+        context.goNamed(AppRoute.home);
+      },
       actions: [
         AdaptiveTextAction(
           label: 'Save',
@@ -84,7 +90,7 @@ class LessonKitPage extends ConsumerWidget {
           return LessonKitView(kit: kit);
         },
         loading: () => const _LoadingState(),
-        error: (error, stack) => _ErrorState(error: error.toString()),
+        error: (error, stack) => _ErrorState(error: error),
       ),
     );
   }
@@ -98,6 +104,18 @@ String _lessonKitAsText(LessonKit kit) {
     ..writeln('Simple explanation')
     ..writeln(kit.simpleExplanation)
     ..writeln();
+
+  if (kit.sourceConcepts.isNotEmpty ||
+      kit.likelyMisconceptions.isNotEmpty ||
+      kit.teacherMoves.isNotEmpty ||
+      kit.checksForUnderstanding.isNotEmpty) {
+    buffer.writeln('Teacher strategy');
+    _writeList(buffer, 'Key ideas', kit.sourceConcepts);
+    _writeList(buffer, 'Misconceptions to check', kit.likelyMisconceptions);
+    _writeList(buffer, 'Teacher moves', kit.teacherMoves);
+    _writeList(buffer, 'Quick checks', kit.checksForUnderstanding);
+    buffer.writeln();
+  }
 
   if (kit.blackboardNotes.isNotEmpty) {
     buffer
@@ -132,6 +150,13 @@ String _lessonKitAsText(LessonKit kit) {
   return buffer.toString().trim();
 }
 
+void _writeList(StringBuffer buffer, String label, List<String> items) {
+  if (items.isEmpty) return;
+  buffer
+    ..writeln(label)
+    ..writeln(items.map((item) => '- $item').join('\n'));
+}
+
 class _LoadingState extends ConsumerWidget {
   const _LoadingState();
 
@@ -157,17 +182,21 @@ class _LoadingState extends ConsumerWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final compact = constraints.maxWidth < 430;
+        final sidePadding = compact ? 16.0 : 20.0;
+        final topPadding = constraints.maxHeight > 680 ? 44.0 : 22.0;
+
         return ListView(
           padding: EdgeInsets.fromLTRB(
-            20,
-            constraints.maxHeight > 620 ? 48 : 24,
-            20,
+            sidePadding,
+            topPadding,
+            sidePadding,
             32,
           ),
           children: [
             Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 660),
+                constraints: const BoxConstraints(maxWidth: 640),
                 child: SoftReveal(
                   child: Container(
                     decoration: BoxDecoration(
@@ -175,107 +204,35 @@ class _LoadingState extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: tokens.oat),
                     ),
-                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+                    padding: EdgeInsets.fromLTRB(
+                      compact ? 18 : 24,
+                      compact ? 20 : 26,
+                      compact ? 18 : 24,
+                      compact ? 20 : 24,
+                    ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _LiveGenerationPulse(progress: progress),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'LIVE GENERATION',
-                                    style: TextStyle(
-                                      color: tokens.inkSubtle,
-                                      fontFamily: 'monospace',
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 0,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    'Generating lesson kit',
-                                    style: TextStyle(
-                                      color: tokens.ink,
-                                      fontSize: 27,
-                                      fontWeight: FontWeight.w600,
-                                      height: 1.06,
-                                      letterSpacing: 0,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    thinkingMode
-                                        ? 'Gemma is reasoning locally on this device.'
-                                        : 'Gemma is working locally on this device.',
-                                    style: TextStyle(
-                                      color: tokens.inkMuted,
-                                      fontSize: 14,
-                                      height: 1.4,
-                                      letterSpacing: 0,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                        _GenerationHero(
+                          progress: progress,
+                          thinkingMode: thinkingMode,
+                          compact: compact,
                         ),
-                        const SizedBox(height: 26),
-                        _ReasoningRunPanel(
-                          enabled: thinkingMode,
+                        const SizedBox(height: 24),
+                        _GenerationStatusPanel(
+                          active: active,
                           progress: progress,
                         ),
                         const SizedBox(height: 18),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 260),
-                          switchInCurve: Curves.easeOutCubic,
-                          switchOutCurve: Curves.easeInCubic,
-                          child: Column(
-                            key: ValueKey(active.title),
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                active.title,
-                                style: TextStyle(
-                                  color: tokens.ink,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.18,
-                                  letterSpacing: 0,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                active.detail,
-                                style: TextStyle(
-                                  color: tokens.inkMuted,
-                                  fontSize: 14,
-                                  height: 1.45,
-                                  letterSpacing: 0,
-                                ),
-                              ),
-                            ],
-                          ),
+                        _GenerationMetrics(
+                          thinkingMode: thinkingMode,
+                          progress: progress,
                         ),
-                        const SizedBox(height: 24),
-                        _LiveTokenMeter(progress: progress),
-                        const SizedBox(height: 18),
-                        _GenerationProgressBar(value: progress.progress),
                         const SizedBox(height: 22),
-                        for (var i = 0; i < _steps.length; i++) ...[
-                          _GenerationStepRow(
-                            step: _steps[i],
-                            index: i,
-                            activeIndex: activeStep,
-                          ),
-                          if (i < _steps.length - 1) const SizedBox(height: 10),
-                        ],
+                        _GenerationTimeline(
+                          steps: _steps,
+                          activeStep: activeStep,
+                        ),
                       ],
                     ),
                   ),
@@ -305,6 +262,253 @@ class _LoadingState extends ConsumerWidget {
   }
 }
 
+class _GenerationHero extends StatelessWidget {
+  const _GenerationHero({
+    required this.progress,
+    required this.thinkingMode,
+    required this.compact,
+  });
+
+  final LessonGenerationProgress progress;
+  final bool thinkingMode;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _LiveGenerationPulse(progress: progress),
+        const SizedBox(height: 16),
+        Text(
+          'LIVE GENERATION',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: tokens.inkSubtle,
+            fontFamily: 'monospace',
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Generating lesson kit',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: tokens.ink,
+            fontSize: compact ? 25 : 30,
+            fontWeight: FontWeight.w700,
+            height: 1.08,
+            letterSpacing: 0,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Text(
+            thinkingMode
+                ? 'Gemma is reasoning locally on this device.'
+                : 'Gemma is working locally on this device.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: tokens.inkMuted,
+              fontSize: 14,
+              height: 1.45,
+              letterSpacing: 0,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _GenerationStatusPanel extends StatelessWidget {
+  const _GenerationStatusPanel({required this.active, required this.progress});
+
+  final _GenerationStatusCopy active;
+  final LessonGenerationProgress progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final percent = (progress.progress.clamp(0, 1) * 100).round();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: tokens.surfaceMuted,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: tokens.oat),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 260),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            layoutBuilder: (currentChild, previousChildren) {
+              return Stack(
+                alignment: Alignment.topLeft,
+                children: [...previousChildren, ?currentChild],
+              );
+            },
+            child: Column(
+              key: ValueKey(active.title),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  active.title,
+                  style: TextStyle(
+                    color: tokens.ink,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    height: 1.18,
+                    letterSpacing: 0,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  active.detail,
+                  style: TextStyle(
+                    color: tokens.inkMuted,
+                    fontSize: 14,
+                    height: 1.45,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Text(
+                'PROGRESS',
+                style: TextStyle(
+                  color: tokens.inkSubtle,
+                  fontFamily: 'monospace',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '$percent%',
+                style: TextStyle(
+                  color: tokens.inkMuted,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  height: 1.2,
+                  letterSpacing: 0,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Semantics(
+            label: 'Lesson generation progress',
+            value: '$percent percent',
+            child: _GenerationProgressBar(value: progress.progress),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GenerationMetrics extends StatelessWidget {
+  const _GenerationMetrics({
+    required this.thinkingMode,
+    required this.progress,
+  });
+
+  final bool thinkingMode;
+  final LessonGenerationProgress progress;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 520) {
+          return Column(
+            children: [
+              _ReasoningRunPanel(enabled: thinkingMode, progress: progress),
+              const SizedBox(height: 12),
+              _LiveTokenMeter(progress: progress),
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _ReasoningRunPanel(
+                enabled: thinkingMode,
+                progress: progress,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: _LiveTokenMeter(progress: progress)),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _GenerationTimeline extends StatelessWidget {
+  const _GenerationTimeline({required this.steps, required this.activeStep});
+
+  final List<_GenerationStep> steps;
+  final int activeStep;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Text(
+              'STEPS',
+              style: TextStyle(
+                color: tokens.inkSubtle,
+                fontFamily: 'monospace',
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              '${activeStep + 1}/${steps.length}',
+              style: TextStyle(
+                color: tokens.inkMuted,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                height: 1.2,
+                letterSpacing: 0,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        for (var i = 0; i < steps.length; i++) ...[
+          _GenerationStepRow(step: steps[i], index: i, activeIndex: activeStep),
+          if (i < steps.length - 1) const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+}
+
 class _ReasoningRunPanel extends StatelessWidget {
   const _ReasoningRunPanel({required this.enabled, required this.progress});
 
@@ -316,7 +520,7 @@ class _ReasoningRunPanel extends StatelessWidget {
     final tokens = context.tokens;
     final text = enabled
         ? progress.reasoningPreview.isEmpty
-              ? 'Planning the classroom structure before writing the final kit.'
+              ? 'Waiting for Gemma reasoning tokens...'
               : progress.reasoningPreview
         : 'Fast direct generation for this run.';
     final countLabel = progress.reasoningCharacters == 1
@@ -354,7 +558,10 @@ class _ReasoningRunPanel extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
                       enabled ? 'REASONING ON' : 'REASONING OFF',
@@ -366,21 +573,17 @@ class _ReasoningRunPanel extends StatelessWidget {
                         letterSpacing: 0,
                       ),
                     ),
-                    if (enabled && progress.hasReasoning) ...[
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          countLabel,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: tokens.inkMuted,
-                            fontSize: 12,
-                            height: 1.2,
-                            letterSpacing: 0,
-                          ),
+                    if (enabled && progress.hasReasoning)
+                      Text(
+                        countLabel,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: tokens.inkMuted,
+                          fontSize: 12,
+                          height: 1.2,
+                          letterSpacing: 0,
                         ),
                       ),
-                    ],
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -510,32 +713,35 @@ class _LiveTokenMeter extends StatelessWidget {
         border: Border.all(color: tokens.oat),
       ),
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'LIVE OUTPUT',
-                  style: TextStyle(
-                    color: tokens.inkSubtle,
-                    fontFamily: 'monospace',
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0,
-                  ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final narrow = constraints.maxWidth < 270;
+          final output = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'LIVE OUTPUT',
+                style: TextStyle(
+                  color: tokens.inkSubtle,
+                  fontFamily: 'monospace',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0,
                 ),
-                const SizedBox(height: 6),
-                TweenAnimationBuilder<double>(
-                  tween: Tween<double>(
-                    begin: 0,
-                    end: progress.generatedTokens.toDouble(),
-                  ),
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOutCubic,
-                  builder: (context, value, _) {
-                    return Text(
+              ),
+              const SizedBox(height: 6),
+              TweenAnimationBuilder<double>(
+                tween: Tween<double>(
+                  begin: 0,
+                  end: progress.generatedTokens.toDouble(),
+                ),
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                builder: (context, value, _) {
+                  return FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
                       '${value.round()} $tokenLabel',
                       style: TextStyle(
                         color: tokens.ink,
@@ -544,26 +750,38 @@ class _LiveTokenMeter extends StatelessWidget {
                         height: 1.08,
                         letterSpacing: 0,
                       ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Flexible(
-            child: Text(
-              detail,
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                color: tokens.inkMuted,
-                fontSize: 13,
-                height: 1.35,
-                letterSpacing: 0,
+                    ),
+                  );
+                },
               ),
+            ],
+          );
+          final detailText = Text(
+            detail,
+            textAlign: narrow ? TextAlign.left : TextAlign.right,
+            style: TextStyle(
+              color: tokens.inkMuted,
+              fontSize: 13,
+              height: 1.35,
+              letterSpacing: 0,
             ),
-          ),
-        ],
+          );
+
+          if (narrow) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [output, const SizedBox(height: 8), detailText],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(child: output),
+              const SizedBox(width: 16),
+              Flexible(child: detailText),
+            ],
+          );
+        },
       ),
     );
   }
@@ -586,9 +804,9 @@ class _GenerationProgressBar extends StatelessWidget {
         builder: (context, animatedValue, _) {
           return LinearProgressIndicator(
             value: animatedValue,
-            minHeight: 5,
+            minHeight: 6,
             color: tokens.ink,
-            backgroundColor: tokens.surfaceMuted,
+            backgroundColor: tokens.oat,
           );
         },
       ),
@@ -615,46 +833,48 @@ class _GenerationStepRow extends StatelessWidget {
     final ink = completed || active ? tokens.ink : tokens.inkSubtle;
 
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
+        SizedBox(
           width: 26,
           height: 26,
-          decoration: BoxDecoration(
-            color: completed ? tokens.ink : tokens.surface,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: active || completed ? tokens.ink : tokens.oat,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            decoration: BoxDecoration(
+              color: completed ? tokens.ink : tokens.surface,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: active || completed ? tokens.ink : tokens.oat,
+              ),
             ),
+            alignment: Alignment.center,
+            child: completed
+                ? Icon(
+                    useCupertino(context)
+                        ? CupertinoIcons.checkmark
+                        : Icons.check,
+                    color: tokens.canvas,
+                    size: 15,
+                  )
+                : active
+                ? Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: tokens.ink,
+                      shape: BoxShape.circle,
+                    ),
+                  )
+                : Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: tokens.oat,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
           ),
-          alignment: Alignment.center,
-          child: completed
-              ? Icon(
-                  useCupertino(context)
-                      ? CupertinoIcons.checkmark
-                      : Icons.check,
-                  color: tokens.canvas,
-                  size: 15,
-                )
-              : active
-              ? Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: tokens.ink,
-                    shape: BoxShape.circle,
-                  ),
-                )
-              : Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: tokens.oat,
-                    shape: BoxShape.circle,
-                  ),
-                ),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -807,11 +1027,18 @@ class _EmptyState extends StatelessWidget {
 class _ErrorState extends ConsumerWidget {
   const _ErrorState({required this.error});
 
-  final String error;
+  final Object error;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = context.tokens;
+    final isCancelled = error is GenerationCancelled;
+    final needsModelSetup = error is ModelUnavailableException;
+    final isParseFailure = error is ModelOutputException;
+    final canRegenerate = ref
+        .read(lessonKitGenerationProvider.notifier)
+        .canRegenerate;
+    final message = _friendlyGenerationError(error);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
@@ -833,7 +1060,7 @@ class _ErrorState extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'Could not generate',
+              isCancelled ? 'Generation cancelled' : 'Could not generate',
               style: TextStyle(
                 color: tokens.ink,
                 fontSize: 24,
@@ -846,7 +1073,7 @@ class _ErrorState extends ConsumerWidget {
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 360),
               child: Text(
-                error,
+                message,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: tokens.inkMuted,
@@ -857,14 +1084,68 @@ class _ErrorState extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 28),
-            AdaptiveSecondaryButton(
-              onPressed: () => context.goNamed(AppRoute.scan),
-              label: 'Try again',
-              fullWidth: false,
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 360),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (needsModelSetup) ...[
+                    AdaptivePrimaryButton(
+                      onPressed: () => context.goNamed(AppRoute.modelSetup),
+                      label: 'Open model setup',
+                      icon: AppIcons.settings(context),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  if (isParseFailure && canRegenerate) ...[
+                    AdaptivePrimaryButton(
+                      onPressed: () => ref
+                          .read(lessonKitGenerationProvider.notifier)
+                          .regenerate(),
+                      label: 'Regenerate',
+                      icon: AppIcons.refresh(context),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  AdaptiveSecondaryButton(
+                    onPressed: () => context.goNamed(AppRoute.scan),
+                    label: 'Try again',
+                    icon: AppIcons.refresh(context),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  String _friendlyGenerationError(Object raw) {
+    if (raw is GenerationCancelled) {
+      return 'You moved away before generation finished. Open Scan again to '
+          'start a new lesson kit.';
+    }
+    if (raw is ModelUnavailableException) {
+      return raw.message;
+    }
+    if (raw is ModelOutputException) {
+      return raw.message;
+    }
+    var text = raw.toString().trim();
+    const prefixes = [
+      'ModelUnavailableException: ',
+      'ModelOutputException: ',
+      'Exception: ',
+    ];
+    for (final prefix in prefixes) {
+      if (text.startsWith(prefix)) {
+        text = text.substring(prefix.length);
+        break;
+      }
+    }
+    const limit = 220;
+    if (text.length <= limit) return text;
+    return '${text.substring(0, limit).trimRight()}...';
   }
 }

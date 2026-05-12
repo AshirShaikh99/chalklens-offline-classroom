@@ -69,7 +69,7 @@ Technical proof points:
 - Gemma 4 image/text input
 - on-device LiteRT-LM inference
 - structured JSON generation
+- offline teaching pack retrieval before generation
 - local model install/import flow
 - local lesson persistence
 - English-first, globally understandable demo
-

@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$LessonKit {
 
- String get lessonTitle; String get grade; String get subject; AppLanguage get language; List<String> get learningObjectives; String get simpleExplanation; List<String> get blackboardNotes; String get localExample; List<QuizQuestion> get oralQuiz; String get groupActivity; List<String> get homework; List<GlossaryTerm> get glossary; String get easyVersion; double get confidence;
+ String get lessonTitle; String get grade; String get subject; AppLanguage get language; List<String> get sourceConcepts; List<String> get likelyMisconceptions; List<String> get teacherMoves; List<String> get checksForUnderstanding; List<String> get learningObjectives; String get simpleExplanation; List<String> get blackboardNotes; String get localExample; List<QuizQuestion> get oralQuiz; String get groupActivity; List<String> get homework; List<GlossaryTerm> get glossary; String get easyVersion; double get confidence;
 /// Create a copy of LessonKit
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $LessonKitCopyWith<LessonKit> get copyWith => _$LessonKitCopyWithImpl<LessonKit>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LessonKit&&(identical(other.lessonTitle, lessonTitle) || other.lessonTitle == lessonTitle)&&(identical(other.grade, grade) || other.grade == grade)&&(identical(other.subject, subject) || other.subject == subject)&&(identical(other.language, language) || other.language == language)&&const DeepCollectionEquality().equals(other.learningObjectives, learningObjectives)&&(identical(other.simpleExplanation, simpleExplanation) || other.simpleExplanation == simpleExplanation)&&const DeepCollectionEquality().equals(other.blackboardNotes, blackboardNotes)&&(identical(other.localExample, localExample) || other.localExample == localExample)&&const DeepCollectionEquality().equals(other.oralQuiz, oralQuiz)&&(identical(other.groupActivity, groupActivity) || other.groupActivity == groupActivity)&&const DeepCollectionEquality().equals(other.homework, homework)&&const DeepCollectionEquality().equals(other.glossary, glossary)&&(identical(other.easyVersion, easyVersion) || other.easyVersion == easyVersion)&&(identical(other.confidence, confidence) || other.confidence == confidence));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is LessonKit&&(identical(other.lessonTitle, lessonTitle) || other.lessonTitle == lessonTitle)&&(identical(other.grade, grade) || other.grade == grade)&&(identical(other.subject, subject) || other.subject == subject)&&(identical(other.language, language) || other.language == language)&&const DeepCollectionEquality().equals(other.sourceConcepts, sourceConcepts)&&const DeepCollectionEquality().equals(other.likelyMisconceptions, likelyMisconceptions)&&const DeepCollectionEquality().equals(other.teacherMoves, teacherMoves)&&const DeepCollectionEquality().equals(other.checksForUnderstanding, checksForUnderstanding)&&const DeepCollectionEquality().equals(other.learningObjectives, learningObjectives)&&(identical(other.simpleExplanation, simpleExplanation) || other.simpleExplanation == simpleExplanation)&&const DeepCollectionEquality().equals(other.blackboardNotes, blackboardNotes)&&(identical(other.localExample, localExample) || other.localExample == localExample)&&const DeepCollectionEquality().equals(other.oralQuiz, oralQuiz)&&(identical(other.groupActivity, groupActivity) || other.groupActivity == groupActivity)&&const DeepCollectionEquality().equals(other.homework, homework)&&const DeepCollectionEquality().equals(other.glossary, glossary)&&(identical(other.easyVersion, easyVersion) || other.easyVersion == easyVersion)&&(identical(other.confidence, confidence) || other.confidence == confidence));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,lessonTitle,grade,subject,language,const DeepCollectionEquality().hash(learningObjectives),simpleExplanation,const DeepCollectionEquality().hash(blackboardNotes),localExample,const DeepCollectionEquality().hash(oralQuiz),groupActivity,const DeepCollectionEquality().hash(homework),const DeepCollectionEquality().hash(glossary),easyVersion,confidence);
+int get hashCode => Object.hash(runtimeType,lessonTitle,grade,subject,language,const DeepCollectionEquality().hash(sourceConcepts),const DeepCollectionEquality().hash(likelyMisconceptions),const DeepCollectionEquality().hash(teacherMoves),const DeepCollectionEquality().hash(checksForUnderstanding),const DeepCollectionEquality().hash(learningObjectives),simpleExplanation,const DeepCollectionEquality().hash(blackboardNotes),localExample,const DeepCollectionEquality().hash(oralQuiz),groupActivity,const DeepCollectionEquality().hash(homework),const DeepCollectionEquality().hash(glossary),easyVersion,confidence);
 
 @override
 String toString() {
-  return 'LessonKit(lessonTitle: $lessonTitle, grade: $grade, subject: $subject, language: $language, learningObjectives: $learningObjectives, simpleExplanation: $simpleExplanation, blackboardNotes: $blackboardNotes, localExample: $localExample, oralQuiz: $oralQuiz, groupActivity: $groupActivity, homework: $homework, glossary: $glossary, easyVersion: $easyVersion, confidence: $confidence)';
+  return 'LessonKit(lessonTitle: $lessonTitle, grade: $grade, subject: $subject, language: $language, sourceConcepts: $sourceConcepts, likelyMisconceptions: $likelyMisconceptions, teacherMoves: $teacherMoves, checksForUnderstanding: $checksForUnderstanding, learningObjectives: $learningObjectives, simpleExplanation: $simpleExplanation, blackboardNotes: $blackboardNotes, localExample: $localExample, oralQuiz: $oralQuiz, groupActivity: $groupActivity, homework: $homework, glossary: $glossary, easyVersion: $easyVersion, confidence: $confidence)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $LessonKitCopyWith<$Res>  {
   factory $LessonKitCopyWith(LessonKit value, $Res Function(LessonKit) _then) = _$LessonKitCopyWithImpl;
 @useResult
 $Res call({
- String lessonTitle, String grade, String subject, AppLanguage language, List<String> learningObjectives, String simpleExplanation, List<String> blackboardNotes, String localExample, List<QuizQuestion> oralQuiz, String groupActivity, List<String> homework, List<GlossaryTerm> glossary, String easyVersion, double confidence
+ String lessonTitle, String grade, String subject, AppLanguage language, List<String> sourceConcepts, List<String> likelyMisconceptions, List<String> teacherMoves, List<String> checksForUnderstanding, List<String> learningObjectives, String simpleExplanation, List<String> blackboardNotes, String localExample, List<QuizQuestion> oralQuiz, String groupActivity, List<String> homework, List<GlossaryTerm> glossary, String easyVersion, double confidence
 });
 
 
@@ -62,13 +62,17 @@ class _$LessonKitCopyWithImpl<$Res>
 
 /// Create a copy of LessonKit
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? lessonTitle = null,Object? grade = null,Object? subject = null,Object? language = null,Object? learningObjectives = null,Object? simpleExplanation = null,Object? blackboardNotes = null,Object? localExample = null,Object? oralQuiz = null,Object? groupActivity = null,Object? homework = null,Object? glossary = null,Object? easyVersion = null,Object? confidence = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? lessonTitle = null,Object? grade = null,Object? subject = null,Object? language = null,Object? sourceConcepts = null,Object? likelyMisconceptions = null,Object? teacherMoves = null,Object? checksForUnderstanding = null,Object? learningObjectives = null,Object? simpleExplanation = null,Object? blackboardNotes = null,Object? localExample = null,Object? oralQuiz = null,Object? groupActivity = null,Object? homework = null,Object? glossary = null,Object? easyVersion = null,Object? confidence = null,}) {
   return _then(_self.copyWith(
 lessonTitle: null == lessonTitle ? _self.lessonTitle : lessonTitle // ignore: cast_nullable_to_non_nullable
 as String,grade: null == grade ? _self.grade : grade // ignore: cast_nullable_to_non_nullable
 as String,subject: null == subject ? _self.subject : subject // ignore: cast_nullable_to_non_nullable
 as String,language: null == language ? _self.language : language // ignore: cast_nullable_to_non_nullable
-as AppLanguage,learningObjectives: null == learningObjectives ? _self.learningObjectives : learningObjectives // ignore: cast_nullable_to_non_nullable
+as AppLanguage,sourceConcepts: null == sourceConcepts ? _self.sourceConcepts : sourceConcepts // ignore: cast_nullable_to_non_nullable
+as List<String>,likelyMisconceptions: null == likelyMisconceptions ? _self.likelyMisconceptions : likelyMisconceptions // ignore: cast_nullable_to_non_nullable
+as List<String>,teacherMoves: null == teacherMoves ? _self.teacherMoves : teacherMoves // ignore: cast_nullable_to_non_nullable
+as List<String>,checksForUnderstanding: null == checksForUnderstanding ? _self.checksForUnderstanding : checksForUnderstanding // ignore: cast_nullable_to_non_nullable
+as List<String>,learningObjectives: null == learningObjectives ? _self.learningObjectives : learningObjectives // ignore: cast_nullable_to_non_nullable
 as List<String>,simpleExplanation: null == simpleExplanation ? _self.simpleExplanation : simpleExplanation // ignore: cast_nullable_to_non_nullable
 as String,blackboardNotes: null == blackboardNotes ? _self.blackboardNotes : blackboardNotes // ignore: cast_nullable_to_non_nullable
 as List<String>,localExample: null == localExample ? _self.localExample : localExample // ignore: cast_nullable_to_non_nullable
@@ -163,10 +167,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String lessonTitle,  String grade,  String subject,  AppLanguage language,  List<String> learningObjectives,  String simpleExplanation,  List<String> blackboardNotes,  String localExample,  List<QuizQuestion> oralQuiz,  String groupActivity,  List<String> homework,  List<GlossaryTerm> glossary,  String easyVersion,  double confidence)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String lessonTitle,  String grade,  String subject,  AppLanguage language,  List<String> sourceConcepts,  List<String> likelyMisconceptions,  List<String> teacherMoves,  List<String> checksForUnderstanding,  List<String> learningObjectives,  String simpleExplanation,  List<String> blackboardNotes,  String localExample,  List<QuizQuestion> oralQuiz,  String groupActivity,  List<String> homework,  List<GlossaryTerm> glossary,  String easyVersion,  double confidence)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _LessonKit() when $default != null:
-return $default(_that.lessonTitle,_that.grade,_that.subject,_that.language,_that.learningObjectives,_that.simpleExplanation,_that.blackboardNotes,_that.localExample,_that.oralQuiz,_that.groupActivity,_that.homework,_that.glossary,_that.easyVersion,_that.confidence);case _:
+return $default(_that.lessonTitle,_that.grade,_that.subject,_that.language,_that.sourceConcepts,_that.likelyMisconceptions,_that.teacherMoves,_that.checksForUnderstanding,_that.learningObjectives,_that.simpleExplanation,_that.blackboardNotes,_that.localExample,_that.oralQuiz,_that.groupActivity,_that.homework,_that.glossary,_that.easyVersion,_that.confidence);case _:
   return orElse();
 
 }
@@ -184,10 +188,10 @@ return $default(_that.lessonTitle,_that.grade,_that.subject,_that.language,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String lessonTitle,  String grade,  String subject,  AppLanguage language,  List<String> learningObjectives,  String simpleExplanation,  List<String> blackboardNotes,  String localExample,  List<QuizQuestion> oralQuiz,  String groupActivity,  List<String> homework,  List<GlossaryTerm> glossary,  String easyVersion,  double confidence)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String lessonTitle,  String grade,  String subject,  AppLanguage language,  List<String> sourceConcepts,  List<String> likelyMisconceptions,  List<String> teacherMoves,  List<String> checksForUnderstanding,  List<String> learningObjectives,  String simpleExplanation,  List<String> blackboardNotes,  String localExample,  List<QuizQuestion> oralQuiz,  String groupActivity,  List<String> homework,  List<GlossaryTerm> glossary,  String easyVersion,  double confidence)  $default,) {final _that = this;
 switch (_that) {
 case _LessonKit():
-return $default(_that.lessonTitle,_that.grade,_that.subject,_that.language,_that.learningObjectives,_that.simpleExplanation,_that.blackboardNotes,_that.localExample,_that.oralQuiz,_that.groupActivity,_that.homework,_that.glossary,_that.easyVersion,_that.confidence);case _:
+return $default(_that.lessonTitle,_that.grade,_that.subject,_that.language,_that.sourceConcepts,_that.likelyMisconceptions,_that.teacherMoves,_that.checksForUnderstanding,_that.learningObjectives,_that.simpleExplanation,_that.blackboardNotes,_that.localExample,_that.oralQuiz,_that.groupActivity,_that.homework,_that.glossary,_that.easyVersion,_that.confidence);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -204,10 +208,10 @@ return $default(_that.lessonTitle,_that.grade,_that.subject,_that.language,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String lessonTitle,  String grade,  String subject,  AppLanguage language,  List<String> learningObjectives,  String simpleExplanation,  List<String> blackboardNotes,  String localExample,  List<QuizQuestion> oralQuiz,  String groupActivity,  List<String> homework,  List<GlossaryTerm> glossary,  String easyVersion,  double confidence)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String lessonTitle,  String grade,  String subject,  AppLanguage language,  List<String> sourceConcepts,  List<String> likelyMisconceptions,  List<String> teacherMoves,  List<String> checksForUnderstanding,  List<String> learningObjectives,  String simpleExplanation,  List<String> blackboardNotes,  String localExample,  List<QuizQuestion> oralQuiz,  String groupActivity,  List<String> homework,  List<GlossaryTerm> glossary,  String easyVersion,  double confidence)?  $default,) {final _that = this;
 switch (_that) {
 case _LessonKit() when $default != null:
-return $default(_that.lessonTitle,_that.grade,_that.subject,_that.language,_that.learningObjectives,_that.simpleExplanation,_that.blackboardNotes,_that.localExample,_that.oralQuiz,_that.groupActivity,_that.homework,_that.glossary,_that.easyVersion,_that.confidence);case _:
+return $default(_that.lessonTitle,_that.grade,_that.subject,_that.language,_that.sourceConcepts,_that.likelyMisconceptions,_that.teacherMoves,_that.checksForUnderstanding,_that.learningObjectives,_that.simpleExplanation,_that.blackboardNotes,_that.localExample,_that.oralQuiz,_that.groupActivity,_that.homework,_that.glossary,_that.easyVersion,_that.confidence);case _:
   return null;
 
 }
@@ -219,13 +223,41 @@ return $default(_that.lessonTitle,_that.grade,_that.subject,_that.language,_that
 
 
 class _LessonKit implements LessonKit {
-  const _LessonKit({required this.lessonTitle, required this.grade, required this.subject, required this.language, final  List<String> learningObjectives = const <String>[], required this.simpleExplanation, final  List<String> blackboardNotes = const <String>[], this.localExample = '', final  List<QuizQuestion> oralQuiz = const <QuizQuestion>[], this.groupActivity = '', final  List<String> homework = const <String>[], final  List<GlossaryTerm> glossary = const <GlossaryTerm>[], this.easyVersion = '', this.confidence = 0.0}): _learningObjectives = learningObjectives,_blackboardNotes = blackboardNotes,_oralQuiz = oralQuiz,_homework = homework,_glossary = glossary;
+  const _LessonKit({required this.lessonTitle, required this.grade, required this.subject, required this.language, final  List<String> sourceConcepts = const <String>[], final  List<String> likelyMisconceptions = const <String>[], final  List<String> teacherMoves = const <String>[], final  List<String> checksForUnderstanding = const <String>[], final  List<String> learningObjectives = const <String>[], required this.simpleExplanation, final  List<String> blackboardNotes = const <String>[], this.localExample = '', final  List<QuizQuestion> oralQuiz = const <QuizQuestion>[], this.groupActivity = '', final  List<String> homework = const <String>[], final  List<GlossaryTerm> glossary = const <GlossaryTerm>[], this.easyVersion = '', this.confidence = 0.0}): _sourceConcepts = sourceConcepts,_likelyMisconceptions = likelyMisconceptions,_teacherMoves = teacherMoves,_checksForUnderstanding = checksForUnderstanding,_learningObjectives = learningObjectives,_blackboardNotes = blackboardNotes,_oralQuiz = oralQuiz,_homework = homework,_glossary = glossary;
   
 
 @override final  String lessonTitle;
 @override final  String grade;
 @override final  String subject;
 @override final  AppLanguage language;
+ final  List<String> _sourceConcepts;
+@override@JsonKey() List<String> get sourceConcepts {
+  if (_sourceConcepts is EqualUnmodifiableListView) return _sourceConcepts;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_sourceConcepts);
+}
+
+ final  List<String> _likelyMisconceptions;
+@override@JsonKey() List<String> get likelyMisconceptions {
+  if (_likelyMisconceptions is EqualUnmodifiableListView) return _likelyMisconceptions;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_likelyMisconceptions);
+}
+
+ final  List<String> _teacherMoves;
+@override@JsonKey() List<String> get teacherMoves {
+  if (_teacherMoves is EqualUnmodifiableListView) return _teacherMoves;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_teacherMoves);
+}
+
+ final  List<String> _checksForUnderstanding;
+@override@JsonKey() List<String> get checksForUnderstanding {
+  if (_checksForUnderstanding is EqualUnmodifiableListView) return _checksForUnderstanding;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_checksForUnderstanding);
+}
+
  final  List<String> _learningObjectives;
 @override@JsonKey() List<String> get learningObjectives {
   if (_learningObjectives is EqualUnmodifiableListView) return _learningObjectives;
@@ -277,16 +309,16 @@ _$LessonKitCopyWith<_LessonKit> get copyWith => __$LessonKitCopyWithImpl<_Lesson
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _LessonKit&&(identical(other.lessonTitle, lessonTitle) || other.lessonTitle == lessonTitle)&&(identical(other.grade, grade) || other.grade == grade)&&(identical(other.subject, subject) || other.subject == subject)&&(identical(other.language, language) || other.language == language)&&const DeepCollectionEquality().equals(other._learningObjectives, _learningObjectives)&&(identical(other.simpleExplanation, simpleExplanation) || other.simpleExplanation == simpleExplanation)&&const DeepCollectionEquality().equals(other._blackboardNotes, _blackboardNotes)&&(identical(other.localExample, localExample) || other.localExample == localExample)&&const DeepCollectionEquality().equals(other._oralQuiz, _oralQuiz)&&(identical(other.groupActivity, groupActivity) || other.groupActivity == groupActivity)&&const DeepCollectionEquality().equals(other._homework, _homework)&&const DeepCollectionEquality().equals(other._glossary, _glossary)&&(identical(other.easyVersion, easyVersion) || other.easyVersion == easyVersion)&&(identical(other.confidence, confidence) || other.confidence == confidence));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _LessonKit&&(identical(other.lessonTitle, lessonTitle) || other.lessonTitle == lessonTitle)&&(identical(other.grade, grade) || other.grade == grade)&&(identical(other.subject, subject) || other.subject == subject)&&(identical(other.language, language) || other.language == language)&&const DeepCollectionEquality().equals(other._sourceConcepts, _sourceConcepts)&&const DeepCollectionEquality().equals(other._likelyMisconceptions, _likelyMisconceptions)&&const DeepCollectionEquality().equals(other._teacherMoves, _teacherMoves)&&const DeepCollectionEquality().equals(other._checksForUnderstanding, _checksForUnderstanding)&&const DeepCollectionEquality().equals(other._learningObjectives, _learningObjectives)&&(identical(other.simpleExplanation, simpleExplanation) || other.simpleExplanation == simpleExplanation)&&const DeepCollectionEquality().equals(other._blackboardNotes, _blackboardNotes)&&(identical(other.localExample, localExample) || other.localExample == localExample)&&const DeepCollectionEquality().equals(other._oralQuiz, _oralQuiz)&&(identical(other.groupActivity, groupActivity) || other.groupActivity == groupActivity)&&const DeepCollectionEquality().equals(other._homework, _homework)&&const DeepCollectionEquality().equals(other._glossary, _glossary)&&(identical(other.easyVersion, easyVersion) || other.easyVersion == easyVersion)&&(identical(other.confidence, confidence) || other.confidence == confidence));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,lessonTitle,grade,subject,language,const DeepCollectionEquality().hash(_learningObjectives),simpleExplanation,const DeepCollectionEquality().hash(_blackboardNotes),localExample,const DeepCollectionEquality().hash(_oralQuiz),groupActivity,const DeepCollectionEquality().hash(_homework),const DeepCollectionEquality().hash(_glossary),easyVersion,confidence);
+int get hashCode => Object.hash(runtimeType,lessonTitle,grade,subject,language,const DeepCollectionEquality().hash(_sourceConcepts),const DeepCollectionEquality().hash(_likelyMisconceptions),const DeepCollectionEquality().hash(_teacherMoves),const DeepCollectionEquality().hash(_checksForUnderstanding),const DeepCollectionEquality().hash(_learningObjectives),simpleExplanation,const DeepCollectionEquality().hash(_blackboardNotes),localExample,const DeepCollectionEquality().hash(_oralQuiz),groupActivity,const DeepCollectionEquality().hash(_homework),const DeepCollectionEquality().hash(_glossary),easyVersion,confidence);
 
 @override
 String toString() {
-  return 'LessonKit(lessonTitle: $lessonTitle, grade: $grade, subject: $subject, language: $language, learningObjectives: $learningObjectives, simpleExplanation: $simpleExplanation, blackboardNotes: $blackboardNotes, localExample: $localExample, oralQuiz: $oralQuiz, groupActivity: $groupActivity, homework: $homework, glossary: $glossary, easyVersion: $easyVersion, confidence: $confidence)';
+  return 'LessonKit(lessonTitle: $lessonTitle, grade: $grade, subject: $subject, language: $language, sourceConcepts: $sourceConcepts, likelyMisconceptions: $likelyMisconceptions, teacherMoves: $teacherMoves, checksForUnderstanding: $checksForUnderstanding, learningObjectives: $learningObjectives, simpleExplanation: $simpleExplanation, blackboardNotes: $blackboardNotes, localExample: $localExample, oralQuiz: $oralQuiz, groupActivity: $groupActivity, homework: $homework, glossary: $glossary, easyVersion: $easyVersion, confidence: $confidence)';
 }
 
 
@@ -297,7 +329,7 @@ abstract mixin class _$LessonKitCopyWith<$Res> implements $LessonKitCopyWith<$Re
   factory _$LessonKitCopyWith(_LessonKit value, $Res Function(_LessonKit) _then) = __$LessonKitCopyWithImpl;
 @override @useResult
 $Res call({
- String lessonTitle, String grade, String subject, AppLanguage language, List<String> learningObjectives, String simpleExplanation, List<String> blackboardNotes, String localExample, List<QuizQuestion> oralQuiz, String groupActivity, List<String> homework, List<GlossaryTerm> glossary, String easyVersion, double confidence
+ String lessonTitle, String grade, String subject, AppLanguage language, List<String> sourceConcepts, List<String> likelyMisconceptions, List<String> teacherMoves, List<String> checksForUnderstanding, List<String> learningObjectives, String simpleExplanation, List<String> blackboardNotes, String localExample, List<QuizQuestion> oralQuiz, String groupActivity, List<String> homework, List<GlossaryTerm> glossary, String easyVersion, double confidence
 });
 
 
@@ -314,13 +346,17 @@ class __$LessonKitCopyWithImpl<$Res>
 
 /// Create a copy of LessonKit
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? lessonTitle = null,Object? grade = null,Object? subject = null,Object? language = null,Object? learningObjectives = null,Object? simpleExplanation = null,Object? blackboardNotes = null,Object? localExample = null,Object? oralQuiz = null,Object? groupActivity = null,Object? homework = null,Object? glossary = null,Object? easyVersion = null,Object? confidence = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? lessonTitle = null,Object? grade = null,Object? subject = null,Object? language = null,Object? sourceConcepts = null,Object? likelyMisconceptions = null,Object? teacherMoves = null,Object? checksForUnderstanding = null,Object? learningObjectives = null,Object? simpleExplanation = null,Object? blackboardNotes = null,Object? localExample = null,Object? oralQuiz = null,Object? groupActivity = null,Object? homework = null,Object? glossary = null,Object? easyVersion = null,Object? confidence = null,}) {
   return _then(_LessonKit(
 lessonTitle: null == lessonTitle ? _self.lessonTitle : lessonTitle // ignore: cast_nullable_to_non_nullable
 as String,grade: null == grade ? _self.grade : grade // ignore: cast_nullable_to_non_nullable
 as String,subject: null == subject ? _self.subject : subject // ignore: cast_nullable_to_non_nullable
 as String,language: null == language ? _self.language : language // ignore: cast_nullable_to_non_nullable
-as AppLanguage,learningObjectives: null == learningObjectives ? _self._learningObjectives : learningObjectives // ignore: cast_nullable_to_non_nullable
+as AppLanguage,sourceConcepts: null == sourceConcepts ? _self._sourceConcepts : sourceConcepts // ignore: cast_nullable_to_non_nullable
+as List<String>,likelyMisconceptions: null == likelyMisconceptions ? _self._likelyMisconceptions : likelyMisconceptions // ignore: cast_nullable_to_non_nullable
+as List<String>,teacherMoves: null == teacherMoves ? _self._teacherMoves : teacherMoves // ignore: cast_nullable_to_non_nullable
+as List<String>,checksForUnderstanding: null == checksForUnderstanding ? _self._checksForUnderstanding : checksForUnderstanding // ignore: cast_nullable_to_non_nullable
+as List<String>,learningObjectives: null == learningObjectives ? _self._learningObjectives : learningObjectives // ignore: cast_nullable_to_non_nullable
 as List<String>,simpleExplanation: null == simpleExplanation ? _self.simpleExplanation : simpleExplanation // ignore: cast_nullable_to_non_nullable
 as String,blackboardNotes: null == blackboardNotes ? _self._blackboardNotes : blackboardNotes // ignore: cast_nullable_to_non_nullable
 as List<String>,localExample: null == localExample ? _self.localExample : localExample // ignore: cast_nullable_to_non_nullable
