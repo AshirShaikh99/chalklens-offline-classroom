@@ -50,15 +50,15 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIFileSharingEnabled</key>
-	<true/>
+	<false/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
-	<true/>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>ChalkLens uses local network access for on-device model inference services.</string>
+	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>ChalkLens needs camera access to scan textbook pages.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>ChalkLens needs photo library access to import textbook page images.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>ChalkLens needs microphone access so students can ask lesson questions by voice.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

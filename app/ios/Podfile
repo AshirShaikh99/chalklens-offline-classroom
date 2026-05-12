@@ -54,7 +54,7 @@ post_install do |installer|
           echo "[flutter_gemma] no Frameworks/ in ${PRODUCT_NAME}.app - skipping"
           exit 0
         fi
-        for base in LiteRtMetalAccelerator GemmaModelConstraintProvider; do
+        for base in LiteRtMetalAccelerator LiteRtTopKMetalSampler GemmaModelConstraintProvider; do
           src="${base}.framework/${base}"
           if [ ! -e "${FRAMEWORKS}/${src}" ]; then
             echo "[flutter_gemma] ${FRAMEWORKS}/${src} missing - Native Assets did not bundle it"
