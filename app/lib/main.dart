@@ -9,6 +9,8 @@ import 'core/theme/app_theme.dart';
 import 'features/lesson_kit/data/datasources/gemma_lesson_kit_datasource.dart';
 import 'features/lesson_kit/presentation/providers/lesson_kit_providers.dart';
 import 'features/settings/presentation/providers/settings_provider.dart';
+import 'features/student_help/data/gemma_student_help_service.dart';
+import 'features/student_help/presentation/providers/student_help_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +24,11 @@ Future<void> main() async {
       overrides: [
         lessonKitDatasourceProvider.overrideWith(
           (ref) => GemmaLessonKitDatasource(
+            settingsReader: () => ref.read(settingsProvider).modelSettings,
+          ),
+        ),
+        studentHelpServiceProvider.overrideWith(
+          (ref) => GemmaStudentHelpService(
             settingsReader: () => ref.read(settingsProvider).modelSettings,
           ),
         ),
@@ -43,7 +50,7 @@ class ChalkLensApp extends ConsumerWidget {
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: themeMode,
-      routerConfig: appRouter,
+      routerConfig: ref.watch(appRouterProvider),
       debugShowCheckedModeBanner: false,
       builder: (context, child) {
         final platformBrightness = MediaQuery.platformBrightnessOf(context);

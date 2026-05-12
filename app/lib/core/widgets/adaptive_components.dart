@@ -68,6 +68,8 @@ class AppIcons {
       : Icons.error_outline;
   static IconData mic(BuildContext context) =>
       useCupertino(context) ? CupertinoIcons.mic : Icons.mic_none_outlined;
+  static IconData stop(BuildContext context) =>
+      useCupertino(context) ? CupertinoIcons.stop_fill : Icons.stop;
   static IconData send(BuildContext context) =>
       useCupertino(context) ? CupertinoIcons.arrow_up : Icons.arrow_upward;
   static IconData chevronRight(BuildContext context) => useCupertino(context)
@@ -682,20 +684,21 @@ class AdaptiveSelectField<T> extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      label.toUpperCase(),
+                      label,
                       style: TextStyle(
-                        color: tokens.inkSubtle,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                        color: tokens.inkMuted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
                         letterSpacing: 0,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
                       labelOf(value),
                       style: TextStyle(
                         color: tokens.ink,
                         fontSize: 16,
+                        fontWeight: FontWeight.w500,
                         height: 1.25,
                         letterSpacing: 0,
                       ),

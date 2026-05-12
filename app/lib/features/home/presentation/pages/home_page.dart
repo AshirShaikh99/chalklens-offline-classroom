@@ -335,7 +335,7 @@ class _ToolsList extends StatelessWidget {
       _ToolItem(
         icon: AppIcons.help(context),
         label: 'Student help',
-        detail: 'Answer simple questions from the current lesson.',
+        detail: 'Answer questions from a selected lesson.',
         onTap: () => context.goNamed(AppRoute.studentHelp),
       ),
       _ToolItem(

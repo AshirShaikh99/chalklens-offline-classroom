@@ -57,10 +57,13 @@ class _SplashPageState extends ConsumerState<SplashPage> {
   @override
   Widget build(BuildContext context) {
     final setup = ref.watch(modelSetupProvider);
-    ref.listen<AsyncValue<ModelSetupState>>(
-      modelSetupProvider,
-      (_, next) => _maybeNavigate(next),
-    );
+    // Try navigation after the current build commits. Idempotent via
+    // _navigated. We use post-frame from build (rather than ref.listen +
+    // ref.watch in parallel) so a single state observation drives navigation.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _maybeNavigate(setup);
+    });
 
     final tokens = context.tokens;
     final status = _statusFor(setup);
