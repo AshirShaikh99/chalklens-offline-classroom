@@ -1,6 +1,6 @@
-/// Data-layer exceptions. Throw these from datasources; repositories
-/// translate them to `Failure` types so the domain layer never deals with
-/// raw I/O concerns.
+/// Typed exceptions used across data and presentation layers. The repository
+/// layer lets these bubble through the domain contract; presentation classifies
+/// by exception type to render appropriate recovery UI.
 library;
 
 class ModelOutputException implements Exception {
@@ -31,4 +31,13 @@ class StorageException implements Exception {
   @override
   String toString() =>
       'StorageException: $message${cause != null ? ' ($cause)' : ''}';
+}
+
+/// Thrown when a generation is cancelled by the caller (e.g. page popped
+/// while streaming). Distinct from a failure so callers can differentiate
+/// "user moved on" from "model errored".
+class GenerationCancelled implements Exception {
+  const GenerationCancelled();
+  @override
+  String toString() => 'GenerationCancelled';
 }
