@@ -31,6 +31,26 @@ class GemmaGenerationSettings {
     );
   }
 
+  Map<String, dynamic> toJson() => {
+        'temperature': temperature,
+        'top_k': topK,
+        'top_p': topP,
+        'random_seed': randomSeed,
+        'thinking_mode': thinkingMode,
+      };
+
+  factory GemmaGenerationSettings.fromJson(Map<String, dynamic> json) {
+    return GemmaGenerationSettings(
+      temperature: (json['temperature'] as num?)?.toDouble() ??
+          defaults.temperature,
+      topK: (json['top_k'] as num?)?.toInt() ?? defaults.topK,
+      topP: (json['top_p'] as num?)?.toDouble() ?? defaults.topP,
+      randomSeed:
+          (json['random_seed'] as num?)?.toInt() ?? defaults.randomSeed,
+      thinkingMode: json['thinking_mode'] as bool? ?? defaults.thinkingMode,
+    );
+  }
+
   String get responseProfile {
     if (temperature <= 0.4 && topK <= 32 && topP <= 0.85) {
       return 'Stable';

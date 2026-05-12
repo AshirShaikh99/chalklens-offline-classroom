@@ -303,7 +303,7 @@ class _StatusPanel extends StatelessWidget {
       return 'Checking offline AI';
     }
     if (state.isReady) return 'Offline AI ready';
-    if (state.check.isReady) return 'AI file verified';
+    if (state.check.isReady) return 'Offline AI needs repair';
     return switch (state.check.status) {
       ModelFileStatus.ready => 'AI file verified',
       ModelFileStatus.missing => 'Offline AI missing',
@@ -319,7 +319,7 @@ class _StatusPanel extends StatelessWidget {
       ModelFileStatus.ready =>
         state.runtimeReady
             ? 'Ready on this device. You can make lessons offline.'
-            : 'The file is valid. One more local check is running.',
+            : 'The file is here, but the local AI engine did not start.',
       ModelFileStatus.missing =>
         'Fresh installs need the model again. If you deleted the app, the phone removed the installed copy.',
       ModelFileStatus.incomplete =>

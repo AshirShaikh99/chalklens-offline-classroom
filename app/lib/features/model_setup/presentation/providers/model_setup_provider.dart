@@ -55,7 +55,18 @@ final modelSetupProvider =
     );
 
 class ModelSetupNotifier extends AsyncNotifier<ModelSetupState> {
-  bool _installRunning = false;
+  /// Hosts the user is allowed to download a model from. Restricts the
+  /// runtime URL field to known good origins, so a misuser cannot point the
+  /// app at an arbitrary server, breaking the offline-by-default promise.
+  static const Set<String> _allowedDownloadHosts = {
+    'huggingface.co',
+    'storage.googleapis.com',
+    'kaggle.com',
+    'github.com',
+    'objects.githubusercontent.com',
+    'github-cloud.s3.amazonaws.com',
+    'github-cloud.githubusercontent.com',
+  };
 
   GemmaModelInstaller get _installer => ref.read(gemmaModelInstallerProvider);
   ModelSetupState? get _current {
@@ -64,6 +75,11 @@ class ModelSetupNotifier extends AsyncNotifier<ModelSetupState> {
       AsyncData<ModelSetupState>(:final value) => value,
       _ => null,
     };
+  }
+
+  bool get _installRunning {
+    final current = _current;
+    return current != null && current.isBusy;
   }
 
   @override
@@ -112,6 +128,21 @@ class ModelSetupNotifier extends AsyncNotifier<ModelSetupState> {
       _setNotice('Enter a direct model download URL first.');
       return;
     }
+    if (!uri.isScheme('https')) {
+      _setNotice('Model URL must use https:// for safety.');
+      return;
+    }
+    final host = uri.host.toLowerCase();
+    final allowed = _allowedDownloadHosts.any(
+      (h) => host == h || host.endsWith('.$h'),
+    );
+    if (!allowed) {
+      _setNotice(
+        'Downloads are only allowed from trusted hosts '
+        '(${_allowedDownloadHosts.join(', ')}).',
+      );
+      return;
+    }
 
     await _runInstall(
       activity: ModelSetupActivity.downloading,
@@ -128,7 +159,6 @@ class ModelSetupNotifier extends AsyncNotifier<ModelSetupState> {
       _log('ignored ${activity.name}; install already running');
       return;
     }
-    _installRunning = true;
     _log('${activity.name} started');
 
     final current = _current;
@@ -167,8 +197,6 @@ class ModelSetupNotifier extends AsyncNotifier<ModelSetupState> {
       state = AsyncValue.data(
         ModelSetupState(check: fallback, notice: _friendlyError(e)),
       );
-    } finally {
-      _installRunning = false;
     }
   }
 
@@ -193,6 +221,11 @@ class ModelSetupNotifier extends AsyncNotifier<ModelSetupState> {
     }
 
     try {
+      // Only register the file with the Gemma plugin here. Do not boot an
+      // inference engine — the splash path uses different modality flags
+      // (audio on / image off) than lesson generation (audio off / image on),
+      // and warming the wrong engine first leaves flutter_gemma in a state
+      // that fails to switch into image mode on iOS.
       await _installer.ensureInstalled();
       return ModelSetupState(
         check: check,
@@ -212,6 +245,8 @@ class ModelSetupNotifier extends AsyncNotifier<ModelSetupState> {
   }
 
   void _log(String message) {
-    debugPrint('[ModelSetup] $message');
+    if (kDebugMode) {
+      debugPrint('[ModelSetup] $message');
+    }
   }
 }
