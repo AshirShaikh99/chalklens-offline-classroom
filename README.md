@@ -40,6 +40,22 @@ flutter run
 
 The Gemma model file is not bundled in this repository. See [`app/README.md`](app/README.md) for model import/download instructions.
 
+### Model URL (build-time)
+
+The app downloads the model from a URL supplied at build time. Set it in
+a local `.env` file (gitignored) and use the helper scripts:
+
+```bash
+cp app/.env.example app/.env
+# edit app/.env and set GEMMA_MODEL_URL=...
+
+./app/scripts/run.sh                  # development run
+./app/scripts/build-release-apk.sh    # release APK with the URL baked in
+```
+
+Without a URL configured, the Model Setup screen falls back to a manual
+input field so the app still works for source-builders without a `.env`.
+
 ## Demo Story
 
 1. Turn on airplane mode.

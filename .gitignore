@@ -28,6 +28,11 @@
 *.bin
 *.gguf
 
+# Environment files (build-time secrets / config)
+.env
+.env.*
+!.env.example
+
 # Logs and temporary files
 *.log
 *.tmp
