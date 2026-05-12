@@ -14,6 +14,5 @@ abstract class SavedLesson with _$SavedLesson {
     required LessonKit kit,
     required LessonContext context,
     required DateTime savedAt,
-    String? sourceImagePath,
   }) = _SavedLesson;
 }

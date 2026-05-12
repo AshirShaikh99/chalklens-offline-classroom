@@ -14,7 +14,6 @@ _SavedLessonModel _$SavedLessonModelFromJson(Map<String, dynamic> json) =>
         json['context'] as Map<String, dynamic>,
       ),
       savedAt: DateTime.parse(json['saved_at'] as String),
-      sourceImagePath: json['source_image_path'] as String?,
     );
 
 Map<String, dynamic> _$SavedLessonModelToJson(_SavedLessonModel instance) =>
@@ -23,5 +22,4 @@ Map<String, dynamic> _$SavedLessonModelToJson(_SavedLessonModel instance) =>
       'kit': instance.kit.toJson(),
       'context': instance.context.toJson(),
       'saved_at': instance.savedAt.toIso8601String(),
-      'source_image_path': instance.sourceImagePath,
     };

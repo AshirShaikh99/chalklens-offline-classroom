@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$SavedLesson {
 
- String get id; LessonKit get kit; LessonContext get context; DateTime get savedAt; String? get sourceImagePath;
+ String get id; LessonKit get kit; LessonContext get context; DateTime get savedAt;
 /// Create a copy of SavedLesson
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $SavedLessonCopyWith<SavedLesson> get copyWith => _$SavedLessonCopyWithImpl<Save
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SavedLesson&&(identical(other.id, id) || other.id == id)&&(identical(other.kit, kit) || other.kit == kit)&&(identical(other.context, context) || other.context == context)&&(identical(other.savedAt, savedAt) || other.savedAt == savedAt)&&(identical(other.sourceImagePath, sourceImagePath) || other.sourceImagePath == sourceImagePath));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SavedLesson&&(identical(other.id, id) || other.id == id)&&(identical(other.kit, kit) || other.kit == kit)&&(identical(other.context, context) || other.context == context)&&(identical(other.savedAt, savedAt) || other.savedAt == savedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,kit,context,savedAt,sourceImagePath);
+int get hashCode => Object.hash(runtimeType,id,kit,context,savedAt);
 
 @override
 String toString() {
-  return 'SavedLesson(id: $id, kit: $kit, context: $context, savedAt: $savedAt, sourceImagePath: $sourceImagePath)';
+  return 'SavedLesson(id: $id, kit: $kit, context: $context, savedAt: $savedAt)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $SavedLessonCopyWith<$Res>  {
   factory $SavedLessonCopyWith(SavedLesson value, $Res Function(SavedLesson) _then) = _$SavedLessonCopyWithImpl;
 @useResult
 $Res call({
- String id, LessonKit kit, LessonContext context, DateTime savedAt, String? sourceImagePath
+ String id, LessonKit kit, LessonContext context, DateTime savedAt
 });
 
 
@@ -62,14 +62,13 @@ class _$SavedLessonCopyWithImpl<$Res>
 
 /// Create a copy of SavedLesson
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? kit = null,Object? context = null,Object? savedAt = null,Object? sourceImagePath = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? kit = null,Object? context = null,Object? savedAt = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,kit: null == kit ? _self.kit : kit // ignore: cast_nullable_to_non_nullable
 as LessonKit,context: null == context ? _self.context : context // ignore: cast_nullable_to_non_nullable
 as LessonContext,savedAt: null == savedAt ? _self.savedAt : savedAt // ignore: cast_nullable_to_non_nullable
-as DateTime,sourceImagePath: freezed == sourceImagePath ? _self.sourceImagePath : sourceImagePath // ignore: cast_nullable_to_non_nullable
-as String?,
+as DateTime,
   ));
 }
 /// Create a copy of SavedLesson
@@ -172,10 +171,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  LessonKit kit,  LessonContext context,  DateTime savedAt,  String? sourceImagePath)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  LessonKit kit,  LessonContext context,  DateTime savedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _SavedLesson() when $default != null:
-return $default(_that.id,_that.kit,_that.context,_that.savedAt,_that.sourceImagePath);case _:
+return $default(_that.id,_that.kit,_that.context,_that.savedAt);case _:
   return orElse();
 
 }
@@ -193,10 +192,10 @@ return $default(_that.id,_that.kit,_that.context,_that.savedAt,_that.sourceImage
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  LessonKit kit,  LessonContext context,  DateTime savedAt,  String? sourceImagePath)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  LessonKit kit,  LessonContext context,  DateTime savedAt)  $default,) {final _that = this;
 switch (_that) {
 case _SavedLesson():
-return $default(_that.id,_that.kit,_that.context,_that.savedAt,_that.sourceImagePath);case _:
+return $default(_that.id,_that.kit,_that.context,_that.savedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -213,10 +212,10 @@ return $default(_that.id,_that.kit,_that.context,_that.savedAt,_that.sourceImage
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  LessonKit kit,  LessonContext context,  DateTime savedAt,  String? sourceImagePath)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  LessonKit kit,  LessonContext context,  DateTime savedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _SavedLesson() when $default != null:
-return $default(_that.id,_that.kit,_that.context,_that.savedAt,_that.sourceImagePath);case _:
+return $default(_that.id,_that.kit,_that.context,_that.savedAt);case _:
   return null;
 
 }
@@ -228,14 +227,13 @@ return $default(_that.id,_that.kit,_that.context,_that.savedAt,_that.sourceImage
 
 
 class _SavedLesson implements SavedLesson {
-  const _SavedLesson({required this.id, required this.kit, required this.context, required this.savedAt, this.sourceImagePath});
+  const _SavedLesson({required this.id, required this.kit, required this.context, required this.savedAt});
   
 
 @override final  String id;
 @override final  LessonKit kit;
 @override final  LessonContext context;
 @override final  DateTime savedAt;
-@override final  String? sourceImagePath;
 
 /// Create a copy of SavedLesson
 /// with the given fields replaced by the non-null parameter values.
@@ -247,16 +245,16 @@ _$SavedLessonCopyWith<_SavedLesson> get copyWith => __$SavedLessonCopyWithImpl<_
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SavedLesson&&(identical(other.id, id) || other.id == id)&&(identical(other.kit, kit) || other.kit == kit)&&(identical(other.context, context) || other.context == context)&&(identical(other.savedAt, savedAt) || other.savedAt == savedAt)&&(identical(other.sourceImagePath, sourceImagePath) || other.sourceImagePath == sourceImagePath));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SavedLesson&&(identical(other.id, id) || other.id == id)&&(identical(other.kit, kit) || other.kit == kit)&&(identical(other.context, context) || other.context == context)&&(identical(other.savedAt, savedAt) || other.savedAt == savedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,kit,context,savedAt,sourceImagePath);
+int get hashCode => Object.hash(runtimeType,id,kit,context,savedAt);
 
 @override
 String toString() {
-  return 'SavedLesson(id: $id, kit: $kit, context: $context, savedAt: $savedAt, sourceImagePath: $sourceImagePath)';
+  return 'SavedLesson(id: $id, kit: $kit, context: $context, savedAt: $savedAt)';
 }
 
 
@@ -267,7 +265,7 @@ abstract mixin class _$SavedLessonCopyWith<$Res> implements $SavedLessonCopyWith
   factory _$SavedLessonCopyWith(_SavedLesson value, $Res Function(_SavedLesson) _then) = __$SavedLessonCopyWithImpl;
 @override @useResult
 $Res call({
- String id, LessonKit kit, LessonContext context, DateTime savedAt, String? sourceImagePath
+ String id, LessonKit kit, LessonContext context, DateTime savedAt
 });
 
 
@@ -284,14 +282,13 @@ class __$SavedLessonCopyWithImpl<$Res>
 
 /// Create a copy of SavedLesson
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? kit = null,Object? context = null,Object? savedAt = null,Object? sourceImagePath = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? kit = null,Object? context = null,Object? savedAt = null,}) {
   return _then(_SavedLesson(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,kit: null == kit ? _self.kit : kit // ignore: cast_nullable_to_non_nullable
 as LessonKit,context: null == context ? _self.context : context // ignore: cast_nullable_to_non_nullable
 as LessonContext,savedAt: null == savedAt ? _self.savedAt : savedAt // ignore: cast_nullable_to_non_nullable
-as DateTime,sourceImagePath: freezed == sourceImagePath ? _self.sourceImagePath : sourceImagePath // ignore: cast_nullable_to_non_nullable
-as String?,
+as DateTime,
   ));
 }
 

@@ -18,7 +18,6 @@ abstract class SavedLessonModel with _$SavedLessonModel {
     required LessonKitModel kit,
     required LessonContextModel context,
     required DateTime savedAt,
-    String? sourceImagePath,
   }) = _SavedLessonModel;
 
   factory SavedLessonModel.fromJson(Map<String, dynamic> json) =>
@@ -29,7 +28,6 @@ abstract class SavedLessonModel with _$SavedLessonModel {
     kit: LessonKitModel.fromEntity(entity.kit),
     context: LessonContextModel.fromEntity(entity.context),
     savedAt: entity.savedAt,
-    sourceImagePath: entity.sourceImagePath,
   );
 
   SavedLesson toEntity() => SavedLesson(
@@ -37,6 +35,5 @@ abstract class SavedLessonModel with _$SavedLessonModel {
     kit: kit.toEntity(),
     context: context.toEntity(),
     savedAt: savedAt,
-    sourceImagePath: sourceImagePath,
   );
 }
