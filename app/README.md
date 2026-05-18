@@ -60,9 +60,9 @@ If no URL is configured, the Model Setup screen still supports manual import.
 1. Launch the app on macOS.
 2. Complete Model Setup by importing or downloading the `.litertlm` file.
 3. Open New Lesson.
-4. Import a PDF or image.
+4. Import a PDF or image. For a repeatable demo, use `test_assets/class3_science_fruits_lesson.pdf` from the repository root.
 5. Review the extracted source text.
-6. Generate the Lesson Kit.
+6. Generate the Lesson Kit. The app infers class, subject, and topic from the uploaded source instead of requiring manual setup fields.
 7. Save the lesson.
 8. Use Present mode for classroom display.
 9. Open Student Help and ask a follow-up question from the generated lesson.
@@ -72,7 +72,7 @@ If no URL is configured, the Model Setup screen still supports manual import.
 - PDF text extraction on macOS uses native `PDFKit`.
 - Image text extraction uses the local platform text-recognition bridge.
 - Pasted text is supported and is the most stable path for repeatable demos.
-- The lesson generator prefers clean source text for stable local model output.
+- The lesson generator prefers clean source text and source-visible clues such as lesson title, class, subject, word banks, examples, and questions.
 
 ## Model and Inference
 

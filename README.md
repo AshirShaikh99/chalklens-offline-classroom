@@ -40,7 +40,7 @@ The goal is not to replace teachers. ChalkLens helps with the heavy preparation 
 1. Open ChalkLens on macOS.
 2. Import a short textbook PDF from `test_assets/`.
 3. Review the extracted lesson text.
-4. Generate the Lesson Kit using local Gemma 4 inference.
+4. Generate the Lesson Kit using local Gemma 4 inference. ChalkLens infers the class, subject, and topic from the uploaded source.
 5. Show the teaching sequence, board notes, oral quiz, and homework.
 6. Open Present mode to demonstrate laptop-based teaching.
 7. Use Student Help to answer a follow-up question from the lesson context.
@@ -75,18 +75,16 @@ For model setup details, see [`app/README.md`](app/README.md).
 
 ## Test Assets
 
-The repository includes small sample classroom files for demos and testing:
+The repository includes one clean sample classroom PDF for demos and testing:
 
-- [`test_assets/class1_english_short_a_test_page.pdf`](test_assets/class1_english_short_a_test_page.pdf)
-- [`test_assets/class1_english_short_a_test_page.txt`](test_assets/class1_english_short_a_test_page.txt)
-- [`test_assets/class7_matter_test_page.txt`](test_assets/class7_matter_test_page.txt)
+- [`test_assets/class3_science_fruits_lesson.pdf`](test_assets/class3_science_fruits_lesson.pdf)
 
 ## Repository Layout
 
 ```text
 app/          Flutter application
 docs/         product, architecture, model, and submission notes
-test_assets/  small demo PDFs and source text
+test_assets/  sample demo PDF
 ```
 
 ## Hackathon Positioning

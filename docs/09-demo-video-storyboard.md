@@ -51,14 +51,14 @@ Narration:
 Show:
 
 1. Open ChalkLens.
-2. Tap "Scan Textbook".
-3. Select Class 5 Science.
-4. Select student level and class duration.
-5. Generate lesson.
+2. Open New Lesson.
+3. Import the sample fruits PDF.
+4. Review the extracted source text.
+5. Generate the lesson kit.
 
 Narration:
 
-> ChalkLens uses Gemma 4 locally to read the textbook page and create a classroom-ready teaching kit.
+> ChalkLens uses Gemma 4 locally to read the uploaded lesson page, infer the class and subject, and create a classroom-ready teaching kit.
 
 ### 1:20-1:55 - Output
 
