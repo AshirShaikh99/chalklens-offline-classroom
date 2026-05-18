@@ -1019,7 +1019,11 @@ Output ONLY one JSON object matching the schema below. Do not use markdown
 fences, comments, reasoning, or any text outside the JSON object.
 
 Target language for ALL textual fields: $langLabel ($native).
-Grade: ${context.grade}. Subject: ${context.subject}.
+Inferred class context: ${context.grade}.
+Inferred subject context: ${context.subject}.
+These inferred values are hints from the uploaded source. If the page text or
+image explicitly says a different class, subject, topic, or lesson title, follow
+the uploaded source and put the source values in the JSON.
 Class duration: ~${context.classDurationMinutes} minutes.
 Student level: ${context.studentLevel.name}.
 
@@ -1033,13 +1037,14 @@ $lessonKitSchema
   }
 
   String _userPromptForImage(LessonContextModel context) =>
-      'Here is a page from a ${context.subject} textbook for ${context.grade}. '
-      'Read the page carefully and produce the classroom kit as JSON matching '
-      'the schema in your instructions.';
+      'Here is a textbook page image. Read the page carefully, infer the '
+      'class, subject, and lesson topic from the visible source, and produce '
+      'the classroom kit as JSON matching the schema in your instructions.';
 
   String _userPromptForText(LessonContextModel context) =>
       'Generate the classroom kit for the passage below as JSON matching the '
-      'schema in your instructions.';
+      'schema in your instructions. Infer the class, subject, and lesson topic '
+      'from the passage when they are present.';
 
   String? _promptSafePassage(String? passage) {
     final text = passage?.replaceAll(RegExp(r'\s+'), ' ').trim();

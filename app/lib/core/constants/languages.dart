@@ -18,8 +18,4 @@ enum AppLanguage {
   final String label;
   final String native;
 
-  /// Languages currently exposed in teacher-facing controls.
-  static List<AppLanguage> get primaryTeachingLanguages => const [
-    AppLanguage.english,
-  ];
 }

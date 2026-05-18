@@ -223,4 +223,255 @@ can slide in liquids, and move freely in gases.
 
     expect(identical(expanded, deepKit), isTrue);
   });
+
+  test('repairs a drifted class 1 short a kit back to phonics', () {
+    const guard = LessonKitDepthGuard();
+    const englishContext = LessonContextModel(
+      grade: 'Class 1',
+      subject: 'English',
+      language: AppLanguage.english,
+      classDurationMinutes: 50,
+    );
+    final teachingPack = const LocalTeachingPack().build(
+      context: englishContext,
+      passage:
+          'Class 1 English. Lesson: The Short A Sound. The short a sound is '
+          'heard in words like cat, mat, hat, bag, fan, and apple. Word Bank: '
+          'cat mat hat bag fan jam cap map apple. Simple Sentences: A cat is '
+          'on the mat. Quick Questions: Which sound do you hear in cat?',
+    );
+    final driftedKit = LessonKitModel(
+      lessonTitle: 'Introduction to Sound',
+      grade: 'Class 1',
+      subject: 'English',
+      language: AppLanguage.english,
+      sourceConcepts: const [
+        'Sound',
+        'Short',
+        'Sentence',
+        'Apple',
+        'Simple',
+        'Students',
+        'Words',
+        'Picture',
+      ],
+      likelyMisconceptions: const [
+        'Check whether students can explain Sound in their own words.',
+        'Check whether students confuse two related key words from the lesson.',
+      ],
+      teacherMoves: const [
+        '0-5 min: Hold up a familiar classroom example and ask what students notice.',
+        '5-10 min: Write the lesson title and key words on the board.',
+        '10-18 min: Read the source idea aloud in short parts.',
+        '18-28 min: Compare Sound and Short using a two-column board table.',
+        '28-36 min: Run a predict-observe-explain moment.',
+      ],
+      checksForUnderstanding: const [
+        'Explain Sound in your own words.',
+        'Give one local example of Sound.',
+        'How is Sound different from Short?',
+        'What word from the board is most important today?',
+      ],
+      learningObjectives: const [
+        'Students can define Sound.',
+        'Students can give one example.',
+      ],
+      simpleExplanation: '''
+Introduction to Sound begins with Sound, but it should be taught as a sequence, not as one short definition. The teacher first shows a concrete example, asks students what they observe, and then connects those observations to the textbook words: Sound, Short, Sentence, Apple, Simple, Students.
+
+Use one familiar object, situation, or sentence from the classroom so students meet the idea before they copy the formal words. The middle of the lesson should help students compare ideas, sort examples, explain differences, and correct everyday meanings that do not match the science or textbook meaning.
+
+By the end, students should be able to define Sound, give a local example, answer quick oral questions, and copy a clean set of board notes. The final minutes should be used for an exit question and homework so the teacher can see whether students can use the key ideas without help.
+''',
+      blackboardNotes: const [
+        'Introduction to Sound',
+        'Today\'s question: What does Sound mean?',
+        'Key words: Sound, Short, Sentence, Apple, Simple, Students',
+        'Compare: Sound vs Short',
+      ],
+      localExample:
+          'Use one object, place, or routine from the classroom and ask students to connect it to Sound and Short.',
+      oralQuiz: const [
+        QuizQuestionModel(question: 'What does Sound mean in this lesson?'),
+        QuizQuestionModel(question: 'Give one example of Sound.'),
+        QuizQuestionModel(question: 'How is Sound different from Short?'),
+        QuizQuestionModel(question: 'What was one observation?'),
+      ],
+      groupActivity:
+          'In pairs, students choose one local example for Sound, explain it, then compare with another pair.',
+      homework: const [
+        'Write the meaning of Sound in your own words.',
+        'Choose three key words and use each in a sentence.',
+      ],
+      glossary: const [
+        GlossaryTermModel(term: 'Sound', meaning: 'A key term.'),
+        GlossaryTermModel(term: 'Short', meaning: 'A key term.'),
+        GlossaryTermModel(term: 'Sentence', meaning: 'A key term.'),
+      ],
+      easyVersion:
+          'Sound is the main idea of the lesson. First look at an example, then explain the idea.',
+    );
+    final logs = <String>[];
+
+    final expanded = guard.expandIfTooShort(
+      kit: driftedKit,
+      context: englishContext,
+      teachingPack: teachingPack,
+      log: logs.add,
+    );
+
+    expect(expanded.lessonTitle, 'The Short A Sound');
+    expect(expanded.sourceConcepts.take(5), [
+      'Short a sound',
+      '/a/',
+      'Short a words',
+      'Cat',
+      'Mat',
+    ]);
+    expect(expanded.sourceConcepts, isNot(contains('Sound')));
+    expect(expanded.simpleExplanation, contains('English phonics lesson'));
+    expect(expanded.simpleExplanation, contains('cat, mat, hat'));
+    expect(expanded.teacherMoves.first, contains('cat, mat, hat'));
+    expect(expanded.teacherMoves, hasLength(7));
+    expect(
+      expanded.teacherMoves.where((move) => move.startsWith('0-5 min')),
+      hasLength(1),
+    );
+    expect(expanded.teacherMoves.join(' '), isNot(contains('local example')));
+    expect(
+      expanded.checksForUnderstanding.first,
+      contains('Which sound do you hear in cat?'),
+    );
+    expect(expanded.checksForUnderstanding, hasLength(6));
+    expect(
+      expanded.checksForUnderstanding.join(' '),
+      isNot(contains('How is Short A Sound connected')),
+    );
+    expect(
+      expanded.likelyMisconceptions.join(' '),
+      isNot(contains('grammar labels')),
+    );
+    expect(expanded.blackboardNotes, contains('Sound: /a/'));
+    expect(expanded.homework.first, contains('Write five short a words'));
+    expect(expanded.glossary.first.meaning, contains('/a/ vowel sound'));
+    expect(
+      expanded.easyVersion,
+      'Short a is the /a/ sound in words like cat, mat, hat, bag, and fan. '
+      'Say the sound, read the word slowly, then use one word in a simple sentence.',
+    );
+    expect(logs.single, contains('drifted from the uploaded phonics source'));
+  });
+
+  test('repairs a complete but ungrounded kit using pdf key terms', () {
+    const guard = LessonKitDepthGuard();
+    const englishContext = LessonContextModel(
+      grade: 'Class 2',
+      subject: 'English',
+      language: AppLanguage.english,
+      classDurationMinutes: 50,
+    );
+    final teachingPack = const LocalTeachingPack().build(
+      context: englishContext,
+      passage:
+          'Lesson: Naming Words. Naming words are names of people, places, '
+          'animals, and things. Word Bank: boy school dog book. '
+          'Sentence: The boy reads a book.',
+    );
+    final ungroundedKit = LessonKitModel(
+      lessonTitle: 'Introduction to Sound',
+      grade: 'Class 2',
+      subject: 'English',
+      language: AppLanguage.english,
+      sourceConcepts: const ['Sound', 'Short', 'Sentence', 'Apple', 'Simple'],
+      likelyMisconceptions: const [
+        'Students may confuse sound with short.',
+        'Students may not use Sound in a new sentence.',
+        'Students may repeat the textbook words.',
+      ],
+      teacherMoves: const [
+        '0-5 min: Show a classroom object.',
+        '5-10 min: Write key words on the board.',
+        '10-18 min: Read the source idea aloud.',
+        '18-28 min: Compare Sound and Short.',
+        '28-40 min: Ask oral checks.',
+        '40-50 min: Give homework.',
+      ],
+      checksForUnderstanding: const [
+        'Explain Sound in your own words.',
+        'Give one local example of Sound.',
+        'How is Sound different from Short?',
+        'Use Sound in a sentence.',
+        'What mistake should we avoid?',
+      ],
+      learningObjectives: const [
+        'Define Sound.',
+        'Give an example of Sound.',
+        'Use Sound in a sentence.',
+      ],
+      simpleExplanation: List.filled(
+        25,
+        'Sound is the main idea, so students observe a familiar example, explain it, and copy board notes.',
+      ).join(' '),
+      blackboardNotes: const [
+        'Introduction to Sound',
+        'Sound: write the textbook meaning.',
+        'Compare: Sound vs Short',
+        'Exit check: explain Sound.',
+      ],
+      localExample:
+          'Use one classroom object and ask students to connect it to Sound.',
+      oralQuiz: const [
+        QuizQuestionModel(question: 'What does Sound mean?'),
+        QuizQuestionModel(question: 'Give one example of Sound.'),
+        QuizQuestionModel(question: 'How is Sound different from Short?'),
+        QuizQuestionModel(question: 'Use Sound in a sentence.'),
+        QuizQuestionModel(question: 'What mistake should we avoid?'),
+      ],
+      groupActivity:
+          'Students choose one local example for Sound and explain it in pairs.',
+      homework: const [
+        'Write the meaning of Sound.',
+        'Use three key words in sentences.',
+        'Draw one example of Sound.',
+      ],
+      glossary: const [
+        GlossaryTermModel(term: 'Sound', meaning: 'A key term.'),
+        GlossaryTermModel(term: 'Short', meaning: 'A key term.'),
+        GlossaryTermModel(term: 'Sentence', meaning: 'A key term.'),
+        GlossaryTermModel(term: 'Apple', meaning: 'A key term.'),
+      ],
+      easyVersion: 'Sound is the main idea. Give a meaning and one example.',
+    );
+    final logs = <String>[];
+
+    final expanded = guard.expandIfTooShort(
+      kit: ungroundedKit,
+      context: englishContext,
+      teachingPack: teachingPack,
+      log: logs.add,
+    );
+
+    expect(expanded.lessonTitle, 'Introduction to Naming Words');
+    expect(expanded.sourceConcepts.take(5), [
+      'Naming Words',
+      'Boy',
+      'School',
+      'Dog',
+      'Book',
+    ]);
+    expect(expanded.sourceConcepts, isNot(contains('Sound')));
+    expect(expanded.simpleExplanation, contains('Naming Words'));
+    expect(expanded.blackboardNotes.first, 'Introduction to Naming Words');
+    expect(expanded.teacherMoves.join(' '), isNot(contains('Sound and Short')));
+    expect(
+      expanded.checksForUnderstanding.join(' '),
+      isNot(contains('Explain Sound')),
+    );
+    expect(expanded.homework.join(' '), isNot(contains('Sound')));
+    expect(
+      expanded.glossary.map((term) => term.term),
+      isNot(contains('Sound')),
+    );
+    expect(logs.single, contains('drifted from the uploaded source text'));
+  });
 }

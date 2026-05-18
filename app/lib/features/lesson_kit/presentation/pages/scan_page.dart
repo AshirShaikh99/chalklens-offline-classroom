@@ -8,14 +8,12 @@ import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../../core/constants/curriculum.dart';
-import '../../../../core/constants/languages.dart';
 import '../../../../core/platform/text_recognition.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/adaptive_components.dart';
 import '../../../../core/widgets/soft_reveal.dart';
-import '../../domain/entities/lesson_context.dart';
+import '../../domain/services/lesson_context_inference.dart';
 import '../providers/lesson_kit_providers.dart';
 
 class ScanPage extends ConsumerStatefulWidget {
@@ -28,9 +26,6 @@ class ScanPage extends ConsumerStatefulWidget {
 class _ScanPageState extends ConsumerState<ScanPage> {
   static const int _defaultLessonDurationMinutes = 50;
 
-  String _grade = Curriculum.grades[4];
-  String _subject = Curriculum.subjects.first;
-  AppLanguage _language = AppLanguage.english;
   Uint8List? _imageBytes;
   String? _sourceAttachmentLabel;
   bool _sourceAttachmentIsPdf = false;
@@ -260,10 +255,8 @@ class _ScanPageState extends ConsumerState<ScanPage> {
       return;
     }
 
-    final ctx = LessonContext(
-      grade: _grade,
-      subject: _subject,
-      language: _language,
+    final ctx = LessonContextInference.fromSource(
+      sourceText: passage,
       classDurationMinutes: _defaultLessonDurationMinutes,
     );
 
@@ -322,71 +315,17 @@ class _ScanPageState extends ConsumerState<ScanPage> {
                   children: [
                     const SoftReveal(child: _ScanIntro()),
                     const SizedBox(height: 28),
-                    if (isWide)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: SoftReveal(
-                              delay: const Duration(milliseconds: 80),
-                              child: _SourcePanel(
-                                imageBytes: _imageBytes,
-                                sourceAttachmentLabel: _sourceAttachmentLabel,
-                                sourceAttachmentIsPdf: _sourceAttachmentIsPdf,
-                                validationMessage: _validationMessage,
-                                passageController: _passageController,
-                                onCapturePressed: _onCapturePressed,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          SizedBox(
-                            width: 360,
-                            child: SoftReveal(
-                              delay: const Duration(milliseconds: 160),
-                              child: _ClassSetupPanel(
-                                grade: _grade,
-                                subject: _subject,
-                                language: _language,
-                                onGradeChanged: (v) =>
-                                    setState(() => _grade = v ?? _grade),
-                                onSubjectChanged: (v) =>
-                                    setState(() => _subject = v ?? _subject),
-                                onLanguageChanged: (v) =>
-                                    setState(() => _language = v ?? _language),
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
-                    else ...[
-                      SoftReveal(
-                        delay: const Duration(milliseconds: 80),
-                        child: _SourcePanel(
-                          imageBytes: _imageBytes,
-                          sourceAttachmentLabel: _sourceAttachmentLabel,
-                          sourceAttachmentIsPdf: _sourceAttachmentIsPdf,
-                          validationMessage: _validationMessage,
-                          passageController: _passageController,
-                          onCapturePressed: _onCapturePressed,
-                        ),
+                    SoftReveal(
+                      delay: const Duration(milliseconds: 80),
+                      child: _SourcePanel(
+                        imageBytes: _imageBytes,
+                        sourceAttachmentLabel: _sourceAttachmentLabel,
+                        sourceAttachmentIsPdf: _sourceAttachmentIsPdf,
+                        validationMessage: _validationMessage,
+                        passageController: _passageController,
+                        onCapturePressed: _onCapturePressed,
                       ),
-                      const SizedBox(height: 14),
-                      SoftReveal(
-                        delay: const Duration(milliseconds: 160),
-                        child: _ClassSetupPanel(
-                          grade: _grade,
-                          subject: _subject,
-                          language: _language,
-                          onGradeChanged: (v) =>
-                              setState(() => _grade = v ?? _grade),
-                          onSubjectChanged: (v) =>
-                              setState(() => _subject = v ?? _subject),
-                          onLanguageChanged: (v) =>
-                              setState(() => _language = v ?? _language),
-                        ),
-                      ),
-                    ],
+                    ),
                   ],
                 ),
               ),
@@ -431,8 +370,8 @@ class _ScanIntro extends StatelessWidget {
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 620),
           child: Text(
-            'Give ChalkLens the source material and a few basics. The offline '
-            'model will draft the kit.',
+            'Give ChalkLens the source material. It reads the page, infers the '
+            'class and subject, and drafts the kit offline.',
             style: TextStyle(
               color: tokens.inkMuted,
               fontSize: 15,
@@ -505,61 +444,6 @@ class _SourcePanel extends StatelessWidget {
                 ],
               ],
             ),
-    );
-  }
-}
-
-class _ClassSetupPanel extends StatelessWidget {
-  const _ClassSetupPanel({
-    required this.grade,
-    required this.subject,
-    required this.language,
-    required this.onGradeChanged,
-    required this.onSubjectChanged,
-    required this.onLanguageChanged,
-  });
-
-  final String grade;
-  final String subject;
-  final AppLanguage language;
-  final ValueChanged<String?> onGradeChanged;
-  final ValueChanged<String?> onSubjectChanged;
-  final ValueChanged<AppLanguage?> onLanguageChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return _StepPanel(
-      number: '02',
-      icon: AppIcons.settings(context),
-      title: 'Lesson basics',
-      detail: 'Only the details needed to make the kit fit the class.',
-      child: Column(
-        children: [
-          AdaptiveSelectField<String>(
-            label: 'Class',
-            value: grade,
-            items: Curriculum.grades,
-            labelOf: (g) => g,
-            onChanged: onGradeChanged,
-          ),
-          const SizedBox(height: 14),
-          AdaptiveSelectField<String>(
-            label: 'Subject',
-            value: subject,
-            items: Curriculum.subjects,
-            labelOf: (s) => s,
-            onChanged: onSubjectChanged,
-          ),
-          const SizedBox(height: 14),
-          AdaptiveSelectField<AppLanguage>(
-            label: 'Output language',
-            value: language,
-            items: AppLanguage.primaryTeachingLanguages,
-            labelOf: (l) => '${l.label}  ·  ${l.native}',
-            onChanged: onLanguageChanged,
-          ),
-        ],
-      ),
     );
   }
 }

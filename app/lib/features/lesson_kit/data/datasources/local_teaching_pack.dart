@@ -49,17 +49,18 @@ class LocalTeachingPack {
     }
 
     return terms
-        .take(8)
+        .take(10)
         .map((term) => 'Check whether "$term" is a key source concept.')
         .toList();
   }
 
   List<String> _candidateTerms(String text, {required String subject}) {
+    final structuredTerms = _structuredSourceTerms(text, subject: subject);
     final normalized = text
         .replaceAll(RegExp(r'[^A-Za-z0-9\s-]'), ' ')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
-    if (normalized.isEmpty) return const [];
+    if (normalized.isEmpty) return structuredTerms;
 
     final knownTerms = _knownSubjectTerms(
       normalized.toLowerCase(),
@@ -115,14 +116,101 @@ class LocalTeachingPack {
         return a.key.compareTo(b.key);
       });
 
-    return [
+    return _dedupe([
       ...knownTerms,
+      ...structuredTerms,
       for (final entry in entries)
         if (!knownTerms.contains(entry.key)) entry.key,
+    ]);
+  }
+
+  List<String> _structuredSourceTerms(String text, {required String subject}) {
+    final terms = <String>[];
+    void add(String term) {
+      final cleaned = _cleanSourceTerm(term);
+      if (cleaned == null) return;
+      if (!terms.contains(cleaned)) terms.add(cleaned);
+    }
+
+    final titleMatch = RegExp(
+      r'(?:^|\n)\s*(?:lesson|topic|title)\s*:\s*([^\n.]+)',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (titleMatch != null) add(titleMatch.group(1)!);
+
+    final inlineLists = RegExp(
+      r'(?:key\s+words|words|word\s+bank|vocabulary)\s*:\s*([^\n.]+)',
+      caseSensitive: false,
+    ).allMatches(text);
+    for (final match in inlineLists) {
+      for (final term in _splitSourceWords(match.group(1)!)) {
+        add(term);
+      }
+    }
+
+    final lines = text.split(RegExp(r'\r?\n'));
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i].trim();
+      final lower = line.toLowerCase();
+      final inlineWordList = RegExp(
+        r'^(?:key\s+words|words|word\s+bank|vocabulary)\s*:\s*(.+)$',
+        caseSensitive: false,
+      ).firstMatch(line);
+      if (inlineWordList != null) {
+        for (final term in _splitSourceWords(inlineWordList.group(1)!)) {
+          add(term);
+        }
+        continue;
+      }
+
+      final isWordBankHeading =
+          lower == 'word bank' ||
+          RegExp(r'^\d+\.\s*word bank$', caseSensitive: false).hasMatch(line);
+      if (!isWordBankHeading) continue;
+
+      for (var j = i + 1; j < lines.length; j++) {
+        final next = lines[j].trim();
+        if (next.isEmpty) continue;
+        if (RegExp(r'^\d+\.\s+').hasMatch(next)) break;
+        for (final term in _splitSourceWords(next)) {
+          add(term);
+        }
+      }
+    }
+
+    return terms;
+  }
+
+  String? _cleanSourceTerm(String value) {
+    final cleaned = value
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .replaceAll(RegExp(r'^[\-\s:]+|[\-\s:,;]+$'), '')
+        .trim();
+    if (cleaned.length < 2) return null;
+    if (RegExp(r'^\d+$').hasMatch(cleaned)) return null;
+    return cleaned.toLowerCase();
+  }
+
+  List<String> _splitSourceWords(String value) {
+    return value
+        .split(RegExp(r'[\s,;]+'))
+        .map((word) => word.trim())
+        .where((word) => word.length >= 2)
+        .toList(growable: false);
+  }
+
+  List<String> _dedupe(Iterable<String> terms) {
+    final seen = <String>{};
+    return [
+      for (final term in terms)
+        if (seen.add(term.toLowerCase())) term,
     ];
   }
 
   List<String> _knownSubjectTerms(String lowerText, {required String subject}) {
+    if (subject.contains('english') || subject.contains('language')) {
+      return _knownEnglishTerms(lowerText);
+    }
     if (!subject.contains('science')) return const [];
     const terms = [
       'matter',
@@ -146,6 +234,41 @@ class LocalTeachingPack {
       for (final term in terms)
         if (RegExp('\\b${RegExp.escape(term)}s?\\b').hasMatch(lowerText)) term,
     ];
+  }
+
+  List<String> _knownEnglishTerms(String lowerText) {
+    final terms = <String>[];
+    void add(String term) {
+      if (!terms.contains(term)) terms.add(term);
+    }
+
+    final hasShortA =
+        RegExp(r'\bshort\s+a(?:\s+sound)?\b').hasMatch(lowerText) ||
+        lowerText.contains('/a/');
+    if (hasShortA) {
+      add('short a sound');
+      add('/a/');
+      add('short a words');
+    }
+
+    const shortAWords = [
+      'cat',
+      'mat',
+      'hat',
+      'bag',
+      'fan',
+      'jam',
+      'cap',
+      'map',
+      'apple',
+    ];
+    for (final word in shortAWords) {
+      if (RegExp('\\b${RegExp.escape(word)}\\b').hasMatch(lowerText)) {
+        add(word);
+      }
+    }
+
+    return terms;
   }
 
   List<String> _pedagogyRules(LessonContextModel context) => [

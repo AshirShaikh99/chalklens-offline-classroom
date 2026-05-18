@@ -55,4 +55,45 @@ void main() {
     );
     expect(result.activityTemplates.join(' '), contains('stones'));
   });
+
+  test('recognizes short a phonics terms from class 1 English text', () {
+    const pack = LocalTeachingPack();
+
+    final context = LessonContextModel(
+      grade: 'Class 1',
+      subject: 'English',
+      language: AppLanguage.english,
+      classDurationMinutes: 50,
+      studentLevel: StudentLevel.standard,
+    );
+
+    final result = pack.build(
+      context: context,
+      passage:
+          'Lesson: The Short A Sound. The short a sound is heard in words '
+          'like cat, mat, hat, bag, fan, and apple. Word Bank: cat mat hat '
+          'bag fan jam cap map apple. Simple Sentences: A cat is on the mat.',
+    );
+
+    expect(
+      result.sourceConceptHints,
+      contains('Check whether "short a sound" is a key source concept.'),
+    );
+    expect(
+      result.sourceConceptHints,
+      contains('Check whether "/a/" is a key source concept.'),
+    );
+    expect(
+      result.sourceConceptHints,
+      contains('Check whether "cat" is a key source concept.'),
+    );
+    expect(
+      result.sourceConceptHints,
+      contains('Check whether "mat" is a key source concept.'),
+    );
+    expect(
+      result.sourceConceptHints,
+      isNot(contains('Check whether "students" is a key source concept.')),
+    );
+  });
 }

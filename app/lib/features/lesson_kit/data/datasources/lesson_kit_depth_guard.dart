@@ -13,15 +13,43 @@ import 'local_teaching_pack.dart';
 class LessonKitDepthGuard {
   const LessonKitDepthGuard();
 
+  static const List<String> _shortAWordPriority = [
+    'Cat',
+    'Mat',
+    'Hat',
+    'Bag',
+    'Fan',
+    'Jam',
+    'Cap',
+    'Map',
+    'Apple',
+  ];
+
   bool isSufficient({
     required LessonKitModel kit,
     required LessonContextModel context,
     required TeachingPackContext teachingPack,
   }) {
-    return LessonKitDepthTarget.forSource(
+    final concepts = _lessonConcepts(
+      kit: kit,
       context: context,
       teachingPack: teachingPack,
-    ).isSatisfied(kit);
+      minCount: 0,
+    );
+    return LessonKitDepthTarget.forSource(
+          context: context,
+          teachingPack: teachingPack,
+        ).isSatisfied(kit) &&
+        !_needsShortAPhonicsRepair(
+          kit: kit,
+          context: context,
+          concepts: concepts,
+        ) &&
+        !_needsSourceGroundingRepair(
+          kit: kit,
+          context: context,
+          teachingPack: teachingPack,
+        );
   }
 
   LessonKitModel expandIfTooShort({
@@ -34,52 +62,100 @@ class LessonKitDepthGuard {
       context: context,
       teachingPack: teachingPack,
     );
-    if (target.isSatisfied(kit)) return kit;
-
-    log?.call(
-      '[GemmaLessonKitDatasource] lesson kit was too short for '
-      'the uploaded content; expanding missing classroom sections locally.',
-    );
-
-    final concepts = _lessonConcepts(
+    final initialConcepts = _lessonConcepts(
       kit: kit,
       context: context,
       teachingPack: teachingPack,
       minCount: target.minSourceConcepts,
     );
-    final title = _lessonTitle(kit, concepts, context);
+    final needsGroundingRepair = _needsShortAPhonicsRepair(
+      kit: kit,
+      context: context,
+      concepts: initialConcepts,
+    );
+    final needsSourceGroundingRepair =
+        !needsGroundingRepair &&
+        _needsSourceGroundingRepair(
+          kit: kit,
+          context: context,
+          teachingPack: teachingPack,
+        );
+    if (target.isSatisfied(kit) &&
+        !needsGroundingRepair &&
+        !needsSourceGroundingRepair) {
+      return kit;
+    }
+
+    log?.call(
+      needsGroundingRepair
+          ? '[GemmaLessonKitDatasource] lesson kit drifted from the '
+                'uploaded phonics source; repairing classroom sections locally.'
+          : needsSourceGroundingRepair
+          ? '[GemmaLessonKitDatasource] lesson kit drifted from the uploaded '
+                'source text; repairing classroom sections locally.'
+          : '[GemmaLessonKitDatasource] lesson kit was too short for '
+                'the uploaded content; expanding missing classroom sections '
+                'locally.',
+    );
+    final concepts = (needsGroundingRepair || needsSourceGroundingRepair)
+        ? _lessonConcepts(
+            kit: needsSourceGroundingRepair
+                ? kit.copyWith(sourceConcepts: const <String>[])
+                : kit,
+            context: context,
+            teachingPack: teachingPack,
+            minCount: target.minSourceConcepts,
+            preferTeachingPack: true,
+          )
+        : initialConcepts;
+    final title = _lessonTitle(
+      kit,
+      concepts,
+      context,
+      forceFromConcepts: needsSourceGroundingRepair,
+    );
+    final prioritizePhonics = _isShortAPhonicsLesson(context, concepts);
+    final repairFromSource = needsGroundingRepair || needsSourceGroundingRepair;
+    final prioritizeFallback = prioritizePhonics || needsSourceGroundingRepair;
     final likelyMisconceptions = _ensureStrings([
-      ...kit.likelyMisconceptions,
-      ...teachingPack.misconceptionChecks,
-      ..._fallbackMisconceptions(concepts, context),
+      if (repairFromSource) ..._fallbackMisconceptions(concepts, context),
+      if (!repairFromSource) ...kit.likelyMisconceptions,
+      if (!repairFromSource) ...teachingPack.misconceptionChecks,
+      if (!repairFromSource) ..._fallbackMisconceptions(concepts, context),
     ], minCount: target.minLikelyMisconceptions);
     final teacherMoves = _ensureStrings([
       ..._fallbackTeacherMoves(concepts, context, target),
-      ..._specificTeacherMoves(kit.teacherMoves, context),
+      if (!repairFromSource)
+        ..._specificTeacherMoves(kit.teacherMoves, context),
     ], minCount: target.minTeacherMoves);
     final checks = _ensureStrings([
-      ..._fallbackChecks(concepts),
-      ..._specificChecks(kit.checksForUnderstanding, concepts, context),
+      ..._fallbackChecks(concepts, context),
+      if (!repairFromSource)
+        ..._specificChecks(kit.checksForUnderstanding, concepts, context),
     ], minCount: target.minChecks);
     final objectives = _ensureStrings([
-      ...kit.learningObjectives,
-      ..._fallbackObjectives(concepts, context),
+      if (prioritizeFallback) ..._fallbackObjectives(concepts, context),
+      if (!prioritizeFallback) ...kit.learningObjectives,
+      if (!prioritizeFallback) ..._fallbackObjectives(concepts, context),
     ], minCount: target.minObjectives);
     final blackboardNotes = _ensureStrings([
-      ..._fallbackBlackboardNotes(title, concepts),
-      ...kit.blackboardNotes,
+      ..._fallbackBlackboardNotes(title, concepts, context),
+      if (!prioritizeFallback) ...kit.blackboardNotes,
     ], minCount: target.minBlackboardNotes);
     final oralQuiz = _ensureQuiz([
-      ..._fallbackQuiz(concepts),
-      ...kit.oralQuiz,
+      ..._fallbackQuiz(concepts, context),
+      if (!prioritizeFallback) ...kit.oralQuiz,
     ], minCount: target.minOralQuiz);
     final homework = _ensureStrings([
-      ...kit.homework,
-      ..._fallbackHomework(concepts),
+      if (prioritizeFallback) ..._fallbackHomework(concepts, context),
+      if (!prioritizeFallback) ...kit.homework,
+      if (!prioritizeFallback) ..._fallbackHomework(concepts, context),
     ], minCount: target.minHomework);
     final glossary = _ensureGlossary([
-      ...kit.glossary,
-      ..._fallbackGlossary(concepts),
+      if (prioritizeFallback) ..._fallbackGlossary(concepts),
+      if (!prioritizeFallback) ...kit.glossary,
+      if (!prioritizeFallback) ..._fallbackGlossary(concepts),
+      if (prioritizePhonics) ...kit.glossary,
     ], minCount: target.minGlossary);
 
     var expanded = kit.copyWith(
@@ -95,14 +171,30 @@ class LessonKitDepthGuard {
         title: title,
         concepts: concepts,
         target: target,
+        forceFallback: needsSourceGroundingRepair,
       ),
       blackboardNotes: blackboardNotes,
-      localExample: _localExample(kit, concepts, context),
+      localExample: _localExample(
+        kit,
+        concepts,
+        context,
+        forceFallback: needsSourceGroundingRepair,
+      ),
       oralQuiz: oralQuiz,
-      groupActivity: _groupActivity(kit, concepts, context),
+      groupActivity: _groupActivity(
+        kit,
+        concepts,
+        context,
+        forceFallback: needsSourceGroundingRepair,
+      ),
       homework: homework,
       glossary: glossary,
-      easyVersion: _easyVersion(kit, concepts),
+      easyVersion: _easyVersion(
+        kit,
+        concepts,
+        context,
+        forceFallback: needsSourceGroundingRepair,
+      ),
       confidence: kit.confidence == 0 ? 0.7 : kit.confidence,
     );
 
@@ -149,10 +241,18 @@ class LessonKitDepthGuard {
   String _lessonTitle(
     LessonKitModel kit,
     List<String> concepts,
-    LessonContextModel context,
-  ) {
+    LessonContextModel context, {
+    bool forceFromConcepts = false,
+  }) {
     final title = kit.lessonTitle.trim();
     final lowerTitle = title.toLowerCase();
+    if (_isShortAPhonicsLesson(context, concepts) &&
+        !lowerTitle.contains('short a')) {
+      return 'The Short A Sound';
+    }
+    if (forceFromConcepts && concepts.isNotEmpty) {
+      return 'Introduction to ${concepts.first}';
+    }
     final genericTitle =
         lowerTitle.isEmpty ||
         lowerTitle == '${context.subject} lesson'.toLowerCase() ||
@@ -181,11 +281,12 @@ class LessonKitDepthGuard {
     required LessonContextModel context,
     required TeachingPackContext teachingPack,
     required int minCount,
+    bool preferTeachingPack = false,
   }) {
-    final rawConcepts = [
-      ...kit.sourceConcepts,
-      ..._conceptsFromTeachingPack(teachingPack),
-    ];
+    final teachingPackConcepts = _conceptsFromTeachingPack(teachingPack);
+    final rawConcepts = preferTeachingPack
+        ? [...teachingPackConcepts, ...kit.sourceConcepts]
+        : [...kit.sourceConcepts, ...teachingPackConcepts];
     final normalized = rawConcepts
         .map((concept) => _normalizeConcept(concept, context))
         .whereType<String>()
@@ -213,6 +314,11 @@ class LessonKitDepthGuard {
   }
 
   String? _normalizeConcept(String raw, LessonContextModel context) {
+    final rawTrimmed = raw.trim();
+    if (RegExp(r'^/[A-Za-z]+/$').hasMatch(rawTrimmed)) {
+      return rawTrimmed.toLowerCase();
+    }
+
     final cleaned = raw
         .replaceAll(RegExp(r'\s+'), ' ')
         .replaceAll(RegExp(r'^[^A-Za-z0-9]+|[^A-Za-z0-9]+$'), '')
@@ -220,6 +326,23 @@ class LessonKitDepthGuard {
     if (cleaned.isEmpty) return null;
 
     final lower = cleaned.toLowerCase();
+    if (context.subject.toLowerCase().contains('english') ||
+        context.subject.toLowerCase().contains('language')) {
+      const englishTerms = {
+        'short a': 'Short a sound',
+        'short a sound': 'Short a sound',
+        'short a words': 'Short a words',
+        'word bank': 'Word bank',
+        'simple sentence': 'Simple sentences',
+        'simple sentences': 'Simple sentences',
+        'reading practice': 'Reading practice',
+        'rhyming word': 'Rhyming words',
+        'rhyming words': 'Rhyming words',
+      };
+      final mapped = englishTerms[lower];
+      if (mapped != null) return mapped;
+    }
+
     const weakScienceWords = {
       'definite',
       'example',
@@ -271,6 +394,10 @@ class LessonKitDepthGuard {
     LessonContextModel context,
   ) {
     final cleaned = _ensureConcepts(concepts, minCount: 0);
+    if (context.subject.toLowerCase().contains('english') ||
+        context.subject.toLowerCase().contains('language')) {
+      return _rankEnglishConceptsForLesson(cleaned);
+    }
     if (!context.subject.toLowerCase().contains('science')) return cleaned;
 
     const priority = [
@@ -299,6 +426,195 @@ class LessonKitDepthGuard {
           item,
     ];
     return _ensureConcepts(ranked, minCount: 0);
+  }
+
+  List<String> _rankEnglishConceptsForLesson(Iterable<String> concepts) {
+    final cleaned = _ensureConcepts(concepts, minCount: 0);
+    final shortAWordCount = cleaned
+        .where((concept) => _shortAWordPriority.contains(concept))
+        .length;
+    final isShortA =
+        cleaned.any((concept) => concept.toLowerCase().contains('short a')) ||
+        cleaned.contains('/a/') ||
+        shortAWordCount >= 3;
+    if (!isShortA) return cleaned;
+
+    const priority = [
+      'Short a sound',
+      '/a/',
+      'Short a words',
+      'Cat',
+      'Mat',
+      'Hat',
+      'Bag',
+      'Fan',
+      'Jam',
+      'Cap',
+      'Map',
+      'Apple',
+      'Word bank',
+      'Simple sentences',
+      'Reading practice',
+      'Rhyming words',
+    ];
+    const weakShortAConcepts = {
+      'sound',
+      'short',
+      'word',
+      'words',
+      'sentence',
+      'students',
+      'student',
+      'simple',
+      'picture',
+      'pictures',
+    };
+    final lookup = {for (final item in cleaned) item.toLowerCase(): item};
+    final ranked = <String>[
+      for (final item in priority)
+        if (lookup.containsKey(item.toLowerCase())) item,
+      for (final item in cleaned)
+        if (!priority.any(
+              (known) => known.toLowerCase() == item.toLowerCase(),
+            ) &&
+            !weakShortAConcepts.contains(item.toLowerCase()))
+          item,
+    ];
+    return _ensureConcepts(
+      ranked,
+      fillItems: const [
+        'Short a sound',
+        '/a/',
+        'Short a words',
+        'Cat',
+        'Mat',
+        'Hat',
+      ],
+      minCount: 0,
+    );
+  }
+
+  bool _needsShortAPhonicsRepair({
+    required LessonKitModel kit,
+    required LessonContextModel context,
+    required List<String> concepts,
+  }) {
+    if (!_isShortAPhonicsLesson(context, concepts)) return false;
+    final title = kit.lessonTitle.toLowerCase();
+    final explanation = kit.simpleExplanation.toLowerCase();
+    final conceptText = kit.sourceConcepts.join(' ').toLowerCase();
+    final combined = '$title $explanation $conceptText';
+    final mentionsShortA = combined.contains('short a');
+    final sourceConceptsGrounded =
+        conceptText.contains('short a') ||
+        conceptText.contains('/a/') ||
+        RegExp(
+              r'\b(cat|mat|hat|bag|fan|jam|cap|map|apple)\b',
+            ).allMatches(conceptText).length >=
+            3;
+    final mentionsPhonicsExample =
+        combined.contains('/a/') ||
+        RegExp(
+          r'\b(cat|mat|hat|bag|fan|jam|cap|map|apple)\b',
+        ).hasMatch(combined);
+    return !title.contains('short a') ||
+        !mentionsShortA ||
+        !mentionsPhonicsExample ||
+        !sourceConceptsGrounded;
+  }
+
+  bool _needsSourceGroundingRepair({
+    required LessonKitModel kit,
+    required LessonContextModel context,
+    required TeachingPackContext teachingPack,
+  }) {
+    if (!teachingPack.hasTextSource) return false;
+
+    final expectedConcepts =
+        _lessonConcepts(
+              kit: kit.copyWith(sourceConcepts: const <String>[]),
+              context: context,
+              teachingPack: teachingPack,
+              minCount: 0,
+              preferTeachingPack: true,
+            )
+            .where((concept) => !_isWeakGroundingConcept(concept))
+            .take(8)
+            .toList(growable: false);
+    if (expectedConcepts.length < 2) return false;
+
+    final kitText = [
+      kit.lessonTitle,
+      kit.sourceConcepts.join(' '),
+      kit.simpleExplanation,
+      kit.blackboardNotes.join(' '),
+      kit.glossary.map((term) => term.term).join(' '),
+    ].join(' ').toLowerCase();
+    final overlap = expectedConcepts
+        .where((concept) => _containsConcept(kitText, concept))
+        .length;
+    final requiredOverlap = expectedConcepts.length >= 4 ? 2 : 1;
+    if (overlap >= requiredOverlap) return false;
+
+    final title = kit.lessonTitle.trim().toLowerCase();
+    final genericTitle =
+        title.isEmpty ||
+        title == '${context.subject} lesson'.toLowerCase() ||
+        title == 'lesson' ||
+        title == 'science lesson';
+    return genericTitle || overlap == 0;
+  }
+
+  bool _containsConcept(String lowerText, String concept) {
+    final lowerConcept = concept.toLowerCase();
+    if (lowerConcept.length <= 3 ||
+        RegExp(r'^[a-z0-9]+$').hasMatch(lowerConcept)) {
+      return RegExp('\\b${RegExp.escape(lowerConcept)}\\b').hasMatch(lowerText);
+    }
+    return lowerText.contains(lowerConcept);
+  }
+
+  bool _isWeakGroundingConcept(String concept) {
+    const weak = {
+      'main idea',
+      'key vocabulary',
+      'example',
+      'examples',
+      'sentence',
+      'sentences',
+      'students',
+      'teacher',
+      'classroom',
+      'picture',
+      'pictures',
+      'simple',
+      'words',
+      'word',
+    };
+    return weak.contains(concept.toLowerCase());
+  }
+
+  bool _isShortAPhonicsLesson(
+    LessonContextModel context,
+    Iterable<String> concepts,
+  ) {
+    final subject = context.subject.toLowerCase();
+    if (!subject.contains('english') && !subject.contains('language')) {
+      return false;
+    }
+    final normalized = concepts
+        .map((concept) => concept.toLowerCase())
+        .toList();
+    final shortAWordCount = normalized
+        .where(
+          (concept) => _shortAWordPriority
+              .map((word) => word.toLowerCase())
+              .contains(concept),
+        )
+        .length;
+    return normalized.any((concept) => concept.contains('short a')) ||
+        normalized.contains('/a/') ||
+        shortAWordCount >= 3;
   }
 
   List<String> _defaultConcepts(LessonContextModel context) {
@@ -350,6 +666,14 @@ class LessonKitDepthGuard {
     LessonContextModel context,
   ) {
     final subject = context.subject.toLowerCase();
+    if (_isShortAPhonicsLesson(context, concepts)) {
+      return [
+        'Check whether students say the letter name "A" instead of the short /a/ sound.',
+        'Check whether students listen for the middle sound in cat, mat, and hat instead of only the first letter.',
+        'Check whether students can read a short a word and also use it in a simple sentence.',
+        'Check whether students include non-short-a words such as dog, sun, or pen.',
+      ];
+    }
     final main = _conceptAt(concepts, 0, fallback: 'the main idea');
     if (subject.contains('science')) {
       final pair = _comparisonPair(concepts);
@@ -377,6 +701,29 @@ class LessonKitDepthGuard {
     final hasMatter = concepts.any(
       (concept) => concept.toLowerCase() == 'matter',
     );
+    if (_isShortAPhonicsLesson(context, concepts)) {
+      final total = context.classDurationMinutes <= 0
+          ? 50
+          : context.classDurationMinutes;
+      if (total < 44) {
+        return [
+          '0-5 min Starter: draw or show a cat, mat, hat, bag, and fan. Ask students which words they already know.',
+          '5-10 min Name the sound: write "The Short A Sound" and "/a/" on the board. Say cat slowly as c - a - t, then blend it as cat.',
+          '10-18 min Build the word bank: cat, mat, hat, bag, fan. Students repeat each word and clap when they hear the short /a/ sound.',
+          '18-28 min Read one simple sentence from the page and ask students to point to the short a word.',
+          '28-$total min Close: ask two quick oral questions, let students copy the board notes, and give the short homework.',
+        ];
+      }
+      return [
+        '0-5 min Starter: draw or show a cat, mat, hat, bag, and fan. Ask students which words they already know.',
+        '5-10 min Name the sound: write "The Short A Sound" and "/a/" on the board. Say cat slowly as c - a - t, then blend it as cat.',
+        '10-18 min Build the word bank: cat, mat, hat, bag, fan. Students repeat each word and clap when they hear the short /a/ sound.',
+        '18-28 min Read the simple sentences from the page, including "A cat is on the mat" and "I have a bag." Ask students to point to the short a word.',
+        '28-36 min Picture-card practice: one student points to a picture or word, and a partner reads it aloud and uses it in a short sentence.',
+        '36-43 min Quick check: ask which word rhymes with cat, ask students to read bag, and circle the short a word from sun, map, pen.',
+        '43-$total min Close: students copy the board notes, answer one exit question about the /a/ sound, and receive short homework.',
+      ];
+    }
     if (hasMatter && context.subject.toLowerCase().contains('science')) {
       return [
         '0-5 min Starter: show a book, water in a cup, and air in a balloon. Ask, "Which of these take up space? How do you know?"',
@@ -456,7 +803,20 @@ class LessonKitDepthGuard {
     });
   }
 
-  List<String> _fallbackChecks(List<String> concepts) {
+  List<String> _fallbackChecks(
+    List<String> concepts,
+    LessonContextModel context,
+  ) {
+    if (_isShortAPhonicsLesson(context, concepts)) {
+      return [
+        'Which sound do you hear in cat? expected response: the short /a/ sound.',
+        'Which word rhymes with cat: mat or dog? expected response: mat.',
+        'Read this word aloud: bag. expected response: students blend b - a - g as bag.',
+        'Make a sentence with hat. expected response: any simple correct sentence using hat.',
+        'Circle the short a word: sun, map, pen. expected response: map.',
+        'Name one more short a word from the board. expected response: cat, mat, hat, bag, fan, or another correct short a word.',
+      ];
+    }
     final main = _conceptAt(concepts, 0, fallback: 'the main idea');
     final pair = _comparisonPair(concepts);
     return [
@@ -473,6 +833,14 @@ class LessonKitDepthGuard {
     List<String> concepts,
     LessonContextModel context,
   ) {
+    if (_isShortAPhonicsLesson(context, concepts)) {
+      return [
+        'Students can hear and say the short /a/ sound in familiar words.',
+        'Students can read short a words such as cat, mat, hat, bag, and fan.',
+        'Students can use one short a word in a simple sentence.',
+        'Students can choose a short a word from a small set of mixed words.',
+      ];
+    }
     final main = _conceptAt(concepts, 0, fallback: 'the main idea');
     final pair = _comparisonPair(concepts);
     return [
@@ -489,9 +857,21 @@ class LessonKitDepthGuard {
     required String title,
     required List<String> concepts,
     required LessonKitDepthTarget target,
+    bool forceFallback = false,
   }) {
     final existing = kit.simpleExplanation.trim();
-    if (_isUsefulText(existing, minLength: target.minSimpleExplanationChars)) {
+    if (_isShortAPhonicsLesson(context, concepts)) {
+      if (_isUsefulText(
+            existing,
+            minLength: target.minSimpleExplanationChars,
+          ) &&
+          _looksGroundedInShortA(existing)) {
+        return existing;
+      }
+      return _shortAExplanation(context: context, target: target);
+    }
+    if (!forceFallback &&
+        _isUsefulText(existing, minLength: target.minSimpleExplanationChars)) {
       return existing;
     }
 
@@ -510,6 +890,9 @@ class LessonKitDepthGuard {
     final pacingSentence = target.label == 'compact'
         ? 'Because the uploaded source is short, this should be treated as a compact source-based lesson. If the class period is longer, the teacher should spend extra time on examples, student talk, board practice, and checking rather than adding facts that were not in the source.'
         : 'This is the part that makes the lesson strong for a ${context.classDurationMinutes}-minute class: students are not only listening, they are observing, predicting, explaining, and checking each other.';
+    final meaningPhrase = context.subject.toLowerCase().contains('science')
+        ? 'the science meaning'
+        : 'the textbook meaning';
 
     final buffer = StringBuffer()
       ..writeln(
@@ -521,7 +904,7 @@ class LessonKitDepthGuard {
       )
       ..writeln()
       ..writeln(
-        'The middle of the lesson should help students compare ideas. They can sort examples, explain differences, and correct everyday meanings that do not match the science or textbook meaning. $pacingSentence',
+        'The middle of the lesson should help students compare ideas. They can sort examples, explain differences, and correct everyday meanings that do not match $meaningPhrase. $pacingSentence',
       )
       ..writeln()
       ..writeln(
@@ -536,6 +919,38 @@ class LessonKitDepthGuard {
       explanation,
       'If students are quiet, the teacher can ask yes-or-no questions first, then ask them to explain their answer. This keeps the lesson accessible while still building toward the formal vocabulary.',
     ].join('\n\n');
+  }
+
+  bool _looksGroundedInShortA(String text) {
+    final lower = text.toLowerCase();
+    return lower.contains('short a') &&
+        (lower.contains('/a/') ||
+            RegExp(
+              r'\b(cat|mat|hat|bag|fan|jam|cap|map|apple)\b',
+            ).hasMatch(lower));
+  }
+
+  String _shortAExplanation({
+    required LessonContextModel context,
+    required LessonKitDepthTarget target,
+  }) {
+    final explanation =
+        '''
+The Short A Sound is an English phonics lesson. Students are learning to hear and say the short /a/ sound in words such as cat, mat, hat, bag, fan, and apple. The important idea is the vowel sound in the middle of simple words.
+
+Begin with pictures or quick drawings from the page. Say cat slowly as c - a - t, then blend it as cat. Ask students to repeat the /a/ sound and clap when they hear it in cat, mat, hat, bag, and fan. This lets students hear the sound before copying the rule.
+
+After the sound is clear, build the word bank on the board and read the simple sentences from the page. Students should point to the short a word, read it aloud, and use one word in a simple sentence of their own.
+'''
+            .trim();
+
+    if (target.label == 'compact') return explanation;
+    return '''
+$explanation
+
+For a ${context.classDurationMinutes}-minute class, use the extra time for more oral practice, pair reading, picture-card checks, and short sentence making. By the end, students should be able to identify the /a/ sound, read several short a words, answer quick oral questions, and copy a clean set of board notes.
+'''
+        .trim();
   }
 
   String _matterExplanation({
@@ -561,12 +976,28 @@ For a ${context.classDurationMinutes}-minute class, the teacher can deepen the s
         .trim();
   }
 
-  List<String> _fallbackBlackboardNotes(String title, List<String> concepts) {
+  List<String> _fallbackBlackboardNotes(
+    String title,
+    List<String> concepts,
+    LessonContextModel context,
+  ) {
     final main = _conceptAt(concepts, 0, fallback: 'Main idea');
     final pair = _comparisonPair(concepts);
     final hasMatter = concepts.any(
       (concept) => concept.toLowerCase() == 'matter',
     );
+    if (_isShortAPhonicsLesson(context, concepts)) {
+      return [
+        'The Short A Sound',
+        'Sound: /a/',
+        'Words: cat, mat, hat, bag, fan',
+        'More words: jam, cap, map, apple',
+        'Read: c - a - t, cat',
+        'Sentence: A cat is on the mat.',
+        'Activity: say the word and clap for the short /a/ sound.',
+        'Exit check: circle the short a word: sun, map, pen.',
+      ];
+    }
     if (hasMatter) {
       return [
         title,
@@ -596,10 +1027,20 @@ For a ${context.classDurationMinutes}-minute class, the teacher can deepen the s
   String _localExample(
     LessonKitModel kit,
     List<String> concepts,
-    LessonContextModel context,
-  ) {
+    LessonContextModel context, {
+    bool forceFallback = false,
+  }) {
     final existing = kit.localExample.trim();
-    if (_isUsefulText(existing, minLength: 40)) return existing;
+    if (_isShortAPhonicsLesson(context, concepts)) {
+      if (_isUsefulText(existing, minLength: 40) &&
+          _looksGroundedInShortA(existing)) {
+        return existing;
+      }
+      return 'Draw or show a cat, mat, hat, bag, and fan. Students say each word aloud, listen for /a/, and clap when they hear the short a sound.';
+    }
+    if (!forceFallback && _isUsefulText(existing, minLength: 40)) {
+      return existing;
+    }
     final subject = context.subject.toLowerCase();
     if (subject.contains('science')) {
       return 'Use a pencil or book, water in a cup, and air in a balloon to connect the lesson words to things students can observe in the classroom.';
@@ -607,7 +1048,38 @@ For a ${context.classDurationMinutes}-minute class, the teacher can deepen the s
     return 'Use one object, place, or routine from the classroom and ask students to connect it to ${concepts.take(2).join(' and ')}.';
   }
 
-  List<QuizQuestionModel> _fallbackQuiz(List<String> concepts) {
+  List<QuizQuestionModel> _fallbackQuiz(
+    List<String> concepts,
+    LessonContextModel context,
+  ) {
+    if (_isShortAPhonicsLesson(context, concepts)) {
+      return const [
+        QuizQuestionModel(
+          question: 'Which sound do you hear in cat?',
+          expectedAnswer: 'The short /a/ sound.',
+        ),
+        QuizQuestionModel(
+          question: 'Which word rhymes with cat: mat or dog?',
+          expectedAnswer: 'Mat.',
+        ),
+        QuizQuestionModel(
+          question: 'Read this word: bag.',
+          expectedAnswer: 'Student reads bag by blending b - a - g.',
+        ),
+        QuizQuestionModel(
+          question: 'Make a sentence with hat.',
+          expectedAnswer: 'Any simple correct sentence using hat.',
+        ),
+        QuizQuestionModel(
+          question: 'Circle the short a word: sun, map, pen.',
+          expectedAnswer: 'Map.',
+        ),
+        QuizQuestionModel(
+          question: 'What should you write first in your homework answer?',
+          expectedAnswer: 'Five short a words, then one picture.',
+        ),
+      ];
+    }
     final main = _conceptAt(concepts, 0, fallback: 'the main idea');
     final pair = _comparisonPair(concepts);
     final questions = [
@@ -646,10 +1118,20 @@ For a ${context.classDurationMinutes}-minute class, the teacher can deepen the s
   String _groupActivity(
     LessonKitModel kit,
     List<String> concepts,
-    LessonContextModel context,
-  ) {
+    LessonContextModel context, {
+    bool forceFallback = false,
+  }) {
     final existing = kit.groupActivity.trim();
-    if (_isUsefulText(existing, minLength: 90)) return existing;
+    if (_isShortAPhonicsLesson(context, concepts)) {
+      if (_isUsefulText(existing, minLength: 90) &&
+          _looksGroundedInShortA(existing)) {
+        return existing;
+      }
+      return 'In pairs, one student points to a short a word or picture from the board, and the other student reads it aloud and uses it in one simple sentence. Partners switch roles, then the teacher writes the strongest sentence on the board.';
+    }
+    if (!forceFallback && _isUsefulText(existing, minLength: 90)) {
+      return existing;
+    }
     final subject = context.subject.toLowerCase();
     if (subject.contains('science')) {
       return 'In groups of three, students observe three examples from the classroom. They fill a two-column board table: "What we observe" and "What it tells us about ${_conceptAt(concepts, 0, fallback: 'the main idea')}". Each group shares one example, one comparison, and one question they still have.';
@@ -657,7 +1139,18 @@ For a ${context.classDurationMinutes}-minute class, the teacher can deepen the s
     return 'In pairs, students choose one local example for ${_conceptAt(concepts, 0, fallback: 'the main idea')}, explain it in one sentence, then compare their explanation with another pair before the teacher writes the strongest answer on the board.';
   }
 
-  List<String> _fallbackHomework(List<String> concepts) {
+  List<String> _fallbackHomework(
+    List<String> concepts,
+    LessonContextModel context,
+  ) {
+    if (_isShortAPhonicsLesson(context, concepts)) {
+      return [
+        'Write five short a words from the board or textbook page.',
+        'Draw one picture for a short a word and write the word under it.',
+        'Read this sentence to someone at home: A cat is on the mat.',
+        'Circle the short a word in each set: sun/map/pen, dog/cap/sit, fan/box/red.',
+      ];
+    }
     final main = _conceptAt(concepts, 0, fallback: 'the main idea');
     final pair = _comparisonPair(concepts);
     return [
@@ -674,6 +1167,48 @@ For a ${context.classDurationMinutes}-minute class, the teacher can deepen the s
 
   GlossaryTermModel _glossaryForTerm(String term) {
     final lower = term.toLowerCase();
+    if (lower == 'short a sound') {
+      return const GlossaryTermModel(
+        term: 'Short a sound',
+        meaning: 'The /a/ vowel sound heard in words like cat and mat.',
+        example: 'Cat has the short /a/ sound.',
+      );
+    }
+    if (lower == '/a/') {
+      return const GlossaryTermModel(
+        term: '/a/',
+        meaning: 'The sound students say in the middle of cat, mat, and hat.',
+        example: 'Say c - a - t, then blend it as cat.',
+      );
+    }
+    if (lower == 'short a words') {
+      return const GlossaryTermModel(
+        term: 'Short a words',
+        meaning: 'Words that include the short /a/ sound.',
+        example: 'Cat, mat, hat, bag, and fan.',
+      );
+    }
+    if (_shortAWordPriority.map((word) => word.toLowerCase()).contains(lower)) {
+      return GlossaryTermModel(
+        term: term,
+        meaning: 'A word from the short a word bank.',
+        example: '$term has the short /a/ sound.',
+      );
+    }
+    if (lower == 'simple sentences') {
+      return const GlossaryTermModel(
+        term: 'Simple sentences',
+        meaning: 'Short sentences students can read using lesson words.',
+        example: 'A cat is on the mat.',
+      );
+    }
+    if (lower == 'rhyming words') {
+      return const GlossaryTermModel(
+        term: 'Rhyming words',
+        meaning: 'Words that end with the same sound.',
+        example: 'Cat and mat rhyme.',
+      );
+    }
     if (lower == 'matter') {
       return const GlossaryTermModel(
         term: 'Matter',
@@ -740,9 +1275,23 @@ For a ${context.classDurationMinutes}-minute class, the teacher can deepen the s
     );
   }
 
-  String _easyVersion(LessonKitModel kit, List<String> concepts) {
+  String _easyVersion(
+    LessonKitModel kit,
+    List<String> concepts,
+    LessonContextModel context, {
+    bool forceFallback = false,
+  }) {
     final existing = kit.easyVersion.trim();
-    if (_isUsefulText(existing, minLength: 80)) return existing;
+    if (_isShortAPhonicsLesson(context, concepts)) {
+      if (_isUsefulText(existing, minLength: 80) &&
+          _looksGroundedInShortA(existing)) {
+        return existing;
+      }
+      return 'Short a is the /a/ sound in words like cat, mat, hat, bag, and fan. Say the sound, read the word slowly, then use one word in a simple sentence.';
+    }
+    if (!forceFallback && _isUsefulText(existing, minLength: 80)) {
+      return existing;
+    }
     final main = _conceptAt(concepts, 0, fallback: 'the lesson idea');
     return '$main is the main idea of the lesson. First look at an example, then learn the key words, then explain the idea in your own words. A good answer gives a meaning and one example.';
   }
