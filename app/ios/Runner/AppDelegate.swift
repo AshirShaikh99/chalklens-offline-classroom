@@ -1,6 +1,7 @@
 import AVFoundation
 import Flutter
 import UIKit
+import Vision
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -45,6 +46,19 @@ import UIKit
         result(FlutterMethodNotImplemented)
       }
     }
+
+    let textRecognitionChannel = FlutterMethodChannel(
+      name: "chalk_lens/text_recognition",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
+    textRecognitionChannel.setMethodCallHandler { call, result in
+      switch call.method {
+      case "recognizeTextFile":
+        Self.recognizeTextFile(call, result)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
   }
 
   private static func availableStorageBytes() -> Int64? {
@@ -69,6 +83,71 @@ import UIKit
       return nil
     } catch {
       return nil
+    }
+  }
+
+  private static func recognizeTextFile(
+    _ call: FlutterMethodCall,
+    _ result: @escaping FlutterResult
+  ) {
+    guard
+      let args = call.arguments as? [String: Any],
+      let path = args["path"] as? String,
+      !path.isEmpty
+    else {
+      result(FlutterError(
+        code: "invalidArguments",
+        message: "Image path is required.",
+        details: nil
+      ))
+      return
+    }
+
+    let url = URL(fileURLWithPath: path)
+    DispatchQueue.global(qos: .userInitiated).async {
+      var didReturn = false
+      let request = VNRecognizeTextRequest { request, error in
+        guard !didReturn else { return }
+        didReturn = true
+
+        if let error {
+          DispatchQueue.main.async {
+            result(FlutterError(
+              code: "recognitionFailed",
+              message: error.localizedDescription,
+              details: nil
+            ))
+          }
+          return
+        }
+
+        let observations = request.results as? [VNRecognizedTextObservation] ?? []
+        let lines = observations.compactMap { observation in
+          observation.topCandidates(1).first?.string
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        }.filter { !$0.isEmpty }
+
+        DispatchQueue.main.async {
+          result(lines.joined(separator: "\n"))
+        }
+      }
+
+      request.recognitionLevel = .accurate
+      request.usesLanguageCorrection = true
+
+      do {
+        try VNImageRequestHandler(url: url, options: [:]).perform([request])
+      } catch {
+        guard !didReturn else { return }
+        didReturn = true
+        DispatchQueue.main.async {
+          result(FlutterError(
+            code: "recognitionFailed",
+            message: error.localizedDescription,
+            details: nil
+          ))
+        }
+      }
     }
   }
 

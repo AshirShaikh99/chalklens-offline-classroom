@@ -163,57 +163,57 @@ class _SetupCheckingPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: tokens.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: tokens.oat),
+        border: Border(top: BorderSide(color: tokens.oat)),
       ),
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: tokens.washBlue,
-              borderRadius: BorderRadius.circular(7),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: tokens.washBlue,
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: Icon(
+                AppIcons.download(context),
+                color: tokens.washBlueInk,
+                size: 18,
+              ),
             ),
-            child: Icon(
-              AppIcons.download(context),
-              color: tokens.washBlueInk,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Checking offline AI',
-                  style: TextStyle(
-                    color: tokens.ink,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    height: 1.25,
-                    letterSpacing: 0,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Checking offline AI',
+                    style: TextStyle(
+                      color: tokens.ink,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      height: 1.25,
+                      letterSpacing: 0,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'Making sure the lesson helper is ready.',
-                  style: TextStyle(
-                    color: tokens.inkMuted,
-                    fontSize: 13,
-                    height: 1.4,
-                    letterSpacing: 0,
+                  const SizedBox(height: 3),
+                  Text(
+                    'Making sure the lesson helper is ready.',
+                    style: TextStyle(
+                      color: tokens.inkMuted,
+                      fontSize: 13,
+                      height: 1.4,
+                      letterSpacing: 0,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -234,66 +234,66 @@ class _StatusPanel extends StatelessWidget {
         ? _PanelTone.note
         : _PanelTone.error;
 
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: tokens.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: tokens.oat),
+        border: Border(top: BorderSide(color: tokens.oat)),
       ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _StatusIcon(tone: tone),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _statusTitle(state),
-                      style: TextStyle(
-                        color: tokens.ink,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _StatusIcon(tone: tone),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _statusTitle(state),
+                        style: TextStyle(
+                          color: tokens.ink,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      _statusBody(state),
-                      style: TextStyle(
-                        color: tokens.inkMuted,
-                        fontSize: 13,
-                        height: 1.4,
-                        letterSpacing: 0,
+                      const SizedBox(height: 3),
+                      Text(
+                        _statusBody(state),
+                        style: TextStyle(
+                          color: tokens.inkMuted,
+                          fontSize: 13,
+                          height: 1.4,
+                          letterSpacing: 0,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+              ],
+            ),
+            if (state.isBusy) ...[
+              const SizedBox(height: 16),
+              _ProgressLine(state: state),
             ],
-          ),
-          if (state.isBusy) ...[
             const SizedBox(height: 16),
-            _ProgressLine(state: state),
+            _MetaRow(
+              label: 'File',
+              value: GemmaModelInstaller.defaultModelFileName,
+            ),
+            const SizedBox(height: 8),
+            _MetaRow(
+              label: 'Size',
+              value:
+                  '${_formatBytes(check.sizeBytes)} / '
+                  '${_formatBytes(check.expectedSizeBytes)}',
+            ),
           ],
-          const SizedBox(height: 16),
-          _MetaRow(
-            label: 'File',
-            value: GemmaModelInstaller.defaultModelFileName,
-          ),
-          const SizedBox(height: 8),
-          _MetaRow(
-            label: 'Size',
-            value:
-                '${_formatBytes(check.sizeBytes)} / '
-                '${_formatBytes(check.expectedSizeBytes)}',
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -397,63 +397,70 @@ class _DownloadPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final tokens = context.tokens;
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: context.tokens.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: context.tokens.oat),
+        border: Border(top: BorderSide(color: tokens.oat)),
       ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Download offline AI',
-            style: TextStyle(
-              color: context.tokens.ink,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0,
-            ),
-          ),
-          const SizedBox(height: 4),
-          if (configuredUrl.isEmpty) ...[
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
             Text(
-              'Paste a direct download link for the Gemma LiteRT-LM file.',
+              'Download offline AI',
               style: TextStyle(
-                color: context.tokens.inkMuted,
-                fontSize: 13,
-                height: 1.35,
+                color: tokens.ink,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
                 letterSpacing: 0,
               ),
             ),
-            const SizedBox(height: 14),
-            AdaptiveTextField(
-              controller: controller,
-              label: 'Download link',
-              placeholder: 'https://huggingface.co/.../gemma-4-E2B-it.litertlm',
-              textInputAction: TextInputAction.done,
-            ),
-            const SizedBox(height: 12),
-          ] else ...[
-            Text(
-              'Gemma 4 E2B · 2.6 GB · one-time download. ChalkLens runs '
-              'fully offline after this — no internet needed to teach.',
-              style: TextStyle(
-                color: context.tokens.inkMuted,
-                fontSize: 13,
-                height: 1.35,
-                letterSpacing: 0,
+            const SizedBox(height: 4),
+            if (configuredUrl.isEmpty) ...[
+              Text(
+                'Paste a direct download link for the '
+                '${GemmaModelInstaller.defaultModelDisplayName} LiteRT-LM '
+                'file, or import it from Files.',
+                style: TextStyle(
+                  color: tokens.inkMuted,
+                  fontSize: 13,
+                  height: 1.35,
+                  letterSpacing: 0,
+                ),
               ),
+              const SizedBox(height: 14),
+              AdaptiveTextField(
+                controller: controller,
+                label: 'Download link',
+                placeholder:
+                    'https://huggingface.co/.../'
+                    '${GemmaModelInstaller.defaultModelFileName}',
+                textInputAction: TextInputAction.done,
+              ),
+              const SizedBox(height: 12),
+            ] else ...[
+              Text(
+                '${GemmaModelInstaller.defaultModelDisplayName} · '
+                '${_formatBytes(GemmaModelInstaller.defaultModelSizeBytes)} · '
+                'one-time setup. ChalkLens runs fully offline after this — '
+                'no internet needed to teach.',
+                style: TextStyle(
+                  color: tokens.inkMuted,
+                  fontSize: 13,
+                  height: 1.35,
+                  letterSpacing: 0,
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
+            AdaptivePrimaryButton(
+              onPressed: enabled ? onDownload : null,
+              label: 'Download offline AI',
+              icon: AppIcons.download(context),
             ),
-            const SizedBox(height: 14),
           ],
-          AdaptivePrimaryButton(
-            onPressed: enabled ? onDownload : null,
-            label: 'Download offline AI',
-            icon: AppIcons.download(context),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -507,45 +514,46 @@ class _MessagePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = _toneColors(context, tone);
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: colors.$1,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colors.$2.withValues(alpha: 0.22)),
+        color: colors.$1.withValues(alpha: 0.72),
+        border: Border(left: BorderSide(color: colors.$2, width: 2)),
       ),
-      padding: const EdgeInsets.all(14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _StatusIcon(tone: tone),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: colors.$2,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _StatusIcon(tone: tone),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: colors.$2,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  body,
-                  style: TextStyle(
-                    color: colors.$2,
-                    fontSize: 13,
-                    height: 1.35,
-                    letterSpacing: 0,
+                  const SizedBox(height: 3),
+                  Text(
+                    body,
+                    style: TextStyle(
+                      color: colors.$2,
+                      fontSize: 13,
+                      height: 1.35,
+                      letterSpacing: 0,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -29,15 +29,19 @@ class GemmaStudentHelpService implements StudentHelpService {
     required AppLanguage language,
     Uint8List? audioBytes,
     LessonKit? lessonKit,
+    bool? thinkingModeOverride,
     StudentHelpThinkingCallback? onThinking,
   }) {
-    return _installer.withGemmaSession(() => _runAnswer(
-          question: question,
-          language: language,
-          audioBytes: audioBytes,
-          lessonKit: lessonKit,
-          onThinking: onThinking,
-        ));
+    return _installer.withGemmaSession(
+      () => _runAnswer(
+        question: question,
+        language: language,
+        audioBytes: audioBytes,
+        lessonKit: lessonKit,
+        thinkingModeOverride: thinkingModeOverride,
+        onThinking: onThinking,
+      ),
+    );
   }
 
   Future<String> _runAnswer({
@@ -45,11 +49,15 @@ class GemmaStudentHelpService implements StudentHelpService {
     required AppLanguage language,
     Uint8List? audioBytes,
     LessonKit? lessonKit,
+    bool? thinkingModeOverride,
     StudentHelpThinkingCallback? onThinking,
   }) async {
     await _installer.ensureInstalled();
-    final settings =
+    final baseSettings =
         _settingsReader?.call() ?? GemmaGenerationSettings.defaults;
+    final settings = baseSettings.copyWith(
+      thinkingMode: thinkingModeOverride ?? baseSettings.thinkingMode,
+    );
     final hasAudio = audioBytes != null && audioBytes.isNotEmpty;
 
     final model = await _openModel(hasAudio: hasAudio);
@@ -113,9 +121,7 @@ class GemmaStudentHelpService implements StudentHelpService {
       try {
         await model.close();
       } catch (closeErr) {
-        debugPrint(
-          '[GemmaStudentHelpService] model close failed: $closeErr',
-        );
+        debugPrint('[GemmaStudentHelpService] model close failed: $closeErr');
       }
     }
   }
@@ -127,6 +133,7 @@ class GemmaStudentHelpService implements StudentHelpService {
   }) {
     final completer = Completer<String>();
     final buffer = StringBuffer();
+    final inlineReasoningSplitter = InlineReasoningSplitter();
     late StreamSubscription<dynamic> sub;
     Timer? watchdog;
 
@@ -161,11 +168,24 @@ class GemmaStudentHelpService implements StudentHelpService {
             onThinking?.call(visibleThinking);
           }
         } else if (chunk is TextResponse) {
-          buffer.write(chunk.token);
+          final split = inlineReasoningSplitter.add(chunk.token);
+          final visibleThinking = reasoningFilter.add(split.reasoning);
+          if (visibleThinking.trim().isNotEmpty) {
+            onThinking?.call(visibleThinking);
+          }
+          buffer.write(split.text);
         }
       },
       onError: (Object e, StackTrace st) => finish(e, st),
-      onDone: () => finish(null),
+      onDone: () {
+        final split = inlineReasoningSplitter.flush();
+        final visibleThinking = reasoningFilter.add(split.reasoning);
+        if (visibleThinking.trim().isNotEmpty) {
+          onThinking?.call(visibleThinking);
+        }
+        buffer.write(split.text);
+        finish(null);
+      },
       cancelOnError: true,
     );
     resetWatchdog();
@@ -219,13 +239,14 @@ class GemmaStudentHelpService implements StudentHelpService {
 
     if (hasAudio) {
       throw ModelUnavailableException(
-        'Voice questions need the Gemma 4 runtime to open with audio input. '
-        'Text questions are still available.',
+        'Voice questions need the offline model to open with audio input. Text '
+        'questions are still available.',
         cause: lastError,
       );
     }
     throw ModelUnavailableException(
-      'Gemma 4 could not start for Student Help. Please try again in a moment.',
+      'The offline model could not start for Student Help. Please try again in '
+      'a moment.',
       cause: lastError,
     );
   }

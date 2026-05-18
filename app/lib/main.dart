@@ -1,6 +1,5 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/router/app_router.dart';
@@ -12,13 +11,9 @@ import 'features/settings/presentation/providers/settings_provider.dart';
 import 'features/student_help/data/gemma_student_help_service.dart';
 import 'features/student_help/presentation/providers/student_help_providers.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // flutter_gemma needs a one-time initialization. We're loading models
-  // from local file (not HuggingFace), so no token is required.
-  await FlutterGemma.initialize(maxDownloadRetries: 3);
-
+  _installDemoLogFilter();
   runApp(
     ProviderScope(
       overrides: [
@@ -36,6 +31,23 @@ Future<void> main() async {
       child: const ChalkLensApp(),
     ),
   );
+}
+
+void _installDemoLogFilter() {
+  final originalDebugPrint = debugPrint;
+  debugPrint = (String? message, {int? wrapWidth}) {
+    if (_isNoisyGemmaLog(message)) return;
+    originalDebugPrint(message, wrapWidth: wrapWidth);
+  };
+}
+
+bool _isNoisyGemmaLog(String? message) {
+  if (message == null) return false;
+  return message.startsWith('InferenceChat:') ||
+      message.startsWith('[FfiInferenceModelSession/perf]') ||
+      message.startsWith('[LiteRtLmFfi/perf]') ||
+      message == '[LiteRtLmFfi] Conversation closed' ||
+      message == '[LiteRtLmFfi] Engine deleted';
 }
 
 class ChalkLensApp extends ConsumerWidget {

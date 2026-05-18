@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:chalk_lens/core/constants/languages.dart';
 import 'package:chalk_lens/core/theme/app_theme.dart';
 import 'package:chalk_lens/features/lesson_kit/domain/entities/lesson_context.dart';
@@ -11,6 +9,7 @@ import 'package:chalk_lens/features/saved_lessons/presentation/providers/saved_l
 import 'package:chalk_lens/features/student_help/domain/student_help_service.dart';
 import 'package:chalk_lens/features/student_help/presentation/pages/student_help_page.dart';
 import 'package:chalk_lens/features/student_help/presentation/providers/student_help_providers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -43,7 +42,9 @@ void main() {
 
     expect(service.callCount, 0);
     expect(
-      find.textContaining('I need a selected lesson first'),
+      find.textContaining(
+        'I need a selected lesson before I can answer safely',
+      ),
       findsOneWidget,
     );
   });
@@ -80,6 +81,41 @@ void main() {
     expect(service.lastQuestion, 'Why do plants need light?');
     expect(service.lastLessonKit, _kit);
     expect(find.text('Plants use sunlight.'), findsOneWidget);
+  });
+
+  testWidgets('greeting with a lesson uses the student help service', (
+    tester,
+  ) async {
+    final service = _FakeStudentHelpService(answerText: 'Hello from Gemma.');
+    final container = ProviderContainer(
+      overrides: [
+        studentHelpServiceProvider.overrideWithValue(service),
+        savedLessonsRepositoryProvider.overrideWithValue(
+          _FakeSavedLessonsRepository(),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    container.read(lessonKitGenerationProvider.notifier).loadFromSaved(_kit);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const StudentHelpPage(),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), 'hi');
+    await tester.testTextInput.receiveAction(TextInputAction.send);
+    await tester.pumpAndSettle();
+
+    expect(service.callCount, 1);
+    expect(service.lastQuestion, 'hi');
+    expect(find.text('Hello from Gemma.'), findsOneWidget);
   });
 
   testWidgets('lesson question can use a saved lesson without active state', (
@@ -166,39 +202,74 @@ void main() {
   });
 
   testWidgets('lesson question shows returned reasoning trace', (tester) async {
-    final service = _FakeStudentHelpService(
-      answerText: 'Plants make food from light.',
-      thinkingText: 'Use the active lesson and keep the answer short.',
-    );
-    final container = ProviderContainer(
-      overrides: [
-        studentHelpServiceProvider.overrideWithValue(service),
-        savedLessonsRepositoryProvider.overrideWithValue(
-          _FakeSavedLessonsRepository(),
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    try {
+      final service = _FakeStudentHelpService(
+        answerText: 'Plants make food from light.',
+        thinkingText: 'Use the active lesson and keep the answer short.',
+      );
+      final container = ProviderContainer(
+        overrides: [
+          studentHelpServiceProvider.overrideWithValue(service),
+          savedLessonsRepositoryProvider.overrideWithValue(
+            _FakeSavedLessonsRepository(),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.read(lessonKitGenerationProvider.notifier).loadFromSaved(_kit);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: const StudentHelpPage(),
+          ),
         ),
-      ],
-    );
-    addTearDown(container.dispose);
+      );
 
-    container.read(lessonKitGenerationProvider.notifier).loadFromSaved(_kit);
+      await tester.enterText(
+        find.byType(TextField),
+        'How do plants make food?',
+      );
+      await tester.testTextInput.receiveAction(TextInputAction.send);
+      await tester.pumpAndSettle();
 
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: MaterialApp(
-          theme: AppTheme.light(),
-          home: const StudentHelpPage(),
+      expect(find.text('Reasoning trace'), findsOneWidget);
+      expect(find.textContaining('Use the active lesson'), findsOneWidget);
+      expect(find.text('Plants make food from light.'), findsOneWidget);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('hides voice input on macOS', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            studentHelpServiceProvider.overrideWithValue(
+              _FakeStudentHelpService(),
+            ),
+            savedLessonsRepositoryProvider.overrideWithValue(
+              _FakeSavedLessonsRepository(),
+            ),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: const StudentHelpPage(),
+          ),
         ),
-      ),
-    );
+      );
 
-    await tester.enterText(find.byType(TextField), 'How do plants make food?');
-    await tester.testTextInput.receiveAction(TextInputAction.send);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Reasoning trace'), findsOneWidget);
-    expect(find.textContaining('Use the active lesson'), findsOneWidget);
-    expect(find.text('Plants make food from light.'), findsOneWidget);
+      expect(find.byTooltip('Voice input'), findsNothing);
+      expect(find.text('Reasoning'), findsNothing);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 }
 
@@ -238,6 +309,7 @@ class _FakeStudentHelpService implements StudentHelpService {
     required AppLanguage language,
     Uint8List? audioBytes,
     LessonKit? lessonKit,
+    bool? thinkingModeOverride,
     StudentHelpThinkingCallback? onThinking,
   }) async {
     callCount += 1;

@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,7 +18,6 @@ import '../../domain/entities/lesson_context.dart';
 import '../../domain/entities/lesson_generation_progress.dart';
 import '../../domain/entities/lesson_kit.dart';
 import '../../domain/entities/student_level.dart';
-import '../../../settings/presentation/providers/settings_provider.dart';
 import '../providers/lesson_kit_providers.dart';
 import '../widgets/lesson_kit_view.dart';
 
@@ -81,6 +83,34 @@ class LessonKitPage extends ConsumerWidget {
             orElse: () => null,
           ),
         ),
+        AdaptiveTextAction(
+          label: 'Export',
+          onPressed: state.maybeWhen(
+            skipLoadingOnRefresh: false,
+            skipLoadingOnReload: false,
+            data: (kit) =>
+                kit == null ? null : () => _exportLessonKit(context, kit),
+            orElse: () => null,
+          ),
+        ),
+        AdaptiveTextAction(
+          label: 'Present',
+          onPressed: state.maybeWhen(
+            skipLoadingOnRefresh: false,
+            skipLoadingOnReload: false,
+            data: (kit) => kit == null
+                ? null
+                : () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        fullscreenDialog: true,
+                        builder: (_) => _ProjectorLessonPage(kit: kit),
+                      ),
+                    );
+                  },
+            orElse: () => null,
+          ),
+        ),
       ],
       body: state.when(
         skipLoadingOnRefresh: false,
@@ -94,6 +124,33 @@ class LessonKitPage extends ConsumerWidget {
       ),
     );
   }
+}
+
+Future<void> _exportLessonKit(BuildContext context, LessonKit kit) async {
+  final fileName = '${_safeFileName(kit.lessonTitle)}-lesson-kit.txt';
+  try {
+    final savedPath = await FilePicker.saveFile(
+      dialogTitle: 'Export lesson kit',
+      fileName: fileName,
+      type: FileType.custom,
+      allowedExtensions: const ['txt'],
+      bytes: Uint8List.fromList(utf8.encode(_lessonKitAsText(kit))),
+    );
+    if (!context.mounted || savedPath == null) return;
+    await showAdaptiveMessage(context, 'Lesson exported.');
+  } catch (e) {
+    if (!context.mounted) return;
+    await showAdaptiveMessage(context, 'Could not export lesson: $e');
+  }
+}
+
+String _safeFileName(String value) {
+  final cleaned = value
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+      .replaceAll(RegExp(r'-+'), '-')
+      .replaceAll(RegExp(r'^-|-$'), '');
+  return cleaned.isEmpty ? 'chalklens' : cleaned;
 }
 
 String _lessonKitAsText(LessonKit kit) {
@@ -132,13 +189,37 @@ String _lessonKitAsText(LessonKit kit) {
   if (kit.oralQuiz.isNotEmpty) {
     buffer
       ..writeln('Oral quiz')
-      ..writeln(kit.oralQuiz.map((q) => '- ${q.question}').join('\n'))
+      ..writeln(
+        kit.oralQuiz
+            .map(
+              (q) => q.expectedAnswer == null
+                  ? '- ${q.question}'
+                  : '- ${q.question}\n  Expected: ${q.expectedAnswer}',
+            )
+            .join('\n'),
+      )
+      ..writeln();
+  }
+  if (kit.groupActivity.isNotEmpty) {
+    buffer
+      ..writeln('Group activity')
+      ..writeln(kit.groupActivity)
       ..writeln();
   }
   if (kit.homework.isNotEmpty) {
     buffer
       ..writeln('Homework')
       ..writeln(kit.homework.map((item) => '- $item').join('\n'))
+      ..writeln();
+  }
+  if (kit.glossary.isNotEmpty) {
+    buffer
+      ..writeln('Glossary')
+      ..writeln(
+        kit.glossary
+            .map((term) => '- ${term.term}: ${term.meaning}')
+            .join('\n'),
+      )
       ..writeln();
   }
   if (kit.easyVersion.isNotEmpty) {
@@ -157,6 +238,221 @@ void _writeList(StringBuffer buffer, String label, List<String> items) {
     ..writeln(items.map((item) => '- $item').join('\n'));
 }
 
+class _ProjectorLessonPage extends StatelessWidget {
+  const _ProjectorLessonPage({required this.kit});
+
+  final LessonKit kit;
+
+  @override
+  Widget build(BuildContext context) {
+    const bg = Color(0xFF0B0D0E);
+    const panel = Color(0xFF141718);
+    const ink = Color(0xFFF5F1E8);
+    const muted = Color(0xFFC9C1B1);
+    const line = Color(0xFF313536);
+
+    return Scaffold(
+      backgroundColor: bg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 20, 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          kit.lessonTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: ink,
+                            fontSize: 30,
+                            fontWeight: FontWeight.w700,
+                            height: 1.05,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '${kit.grade} · ${kit.subject}',
+                          style: const TextStyle(
+                            color: muted,
+                            fontSize: 15,
+                            height: 1.2,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close, size: 18),
+                    label: const Text('Exit'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: ink,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        side: const BorderSide(color: line),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
+                children: [
+                  if (kit.blackboardNotes.isNotEmpty)
+                    _ProjectorSection(
+                      title: 'Blackboard notes',
+                      color: panel,
+                      line: line,
+                      child: _ProjectorBullets(items: kit.blackboardNotes),
+                    ),
+                  if (kit.teacherMoves.isNotEmpty)
+                    _ProjectorSection(
+                      title: 'Teacher flow',
+                      color: panel,
+                      line: line,
+                      child: _ProjectorBullets(items: kit.teacherMoves),
+                    ),
+                  if (kit.checksForUnderstanding.isNotEmpty)
+                    _ProjectorSection(
+                      title: 'Quick checks',
+                      color: panel,
+                      line: line,
+                      child: _ProjectorBullets(
+                        items: kit.checksForUnderstanding,
+                      ),
+                    ),
+                  if (kit.oralQuiz.isNotEmpty)
+                    _ProjectorSection(
+                      title: 'Oral quiz',
+                      color: panel,
+                      line: line,
+                      child: _ProjectorBullets(
+                        items: kit.oralQuiz.map((q) => q.question).toList(),
+                      ),
+                    ),
+                  if (kit.homework.isNotEmpty)
+                    _ProjectorSection(
+                      title: 'Homework',
+                      color: panel,
+                      line: line,
+                      child: _ProjectorBullets(items: kit.homework),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProjectorSection extends StatelessWidget {
+  const _ProjectorSection({
+    required this.title,
+    required this.color,
+    required this.line,
+    required this.child,
+  });
+
+  final String title;
+  final Color color;
+  final Color line;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.fromLTRB(22, 18, 22, 22),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title.toUpperCase(),
+            style: const TextStyle(
+              color: Color(0xFFC9C1B1),
+              fontFamily: 'monospace',
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0,
+            ),
+          ),
+          const SizedBox(height: 15),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _ProjectorBullets extends StatelessWidget {
+  const _ProjectorBullets({required this.items});
+
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final item in items) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(top: 13),
+                child: SizedBox(
+                  width: 7,
+                  height: 7,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Color(0xFFF5F1E8),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  item,
+                  style: const TextStyle(
+                    color: Color(0xFFF5F1E8),
+                    fontSize: 25,
+                    height: 1.38,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 13),
+        ],
+      ],
+    );
+  }
+}
+
 class _LoadingState extends ConsumerWidget {
   const _LoadingState();
 
@@ -170,13 +466,7 @@ class _LoadingState extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tokens = context.tokens;
     final progress = ref.watch(lessonGenerationProgressProvider);
-    final thinkingMode = ref.watch(
-      settingsProvider.select(
-        (settings) => settings.modelSettings.thinkingMode,
-      ),
-    );
     final active = _GenerationStatusCopy.from(progress.phase);
     final activeStep = _stepIndexFor(progress.phase);
 
@@ -198,36 +488,24 @@ class _LoadingState extends ConsumerWidget {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 640),
                 child: SoftReveal(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: tokens.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: tokens.oat),
-                    ),
+                  child: Padding(
                     padding: EdgeInsets.fromLTRB(
-                      compact ? 18 : 24,
-                      compact ? 20 : 26,
-                      compact ? 18 : 24,
-                      compact ? 20 : 24,
+                      compact ? 6 : 12,
+                      compact ? 8 : 14,
+                      compact ? 6 : 12,
+                      compact ? 8 : 14,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _GenerationHero(
-                          progress: progress,
-                          thinkingMode: thinkingMode,
-                          compact: compact,
-                        ),
-                        const SizedBox(height: 24),
+                        _GenerationHero(progress: progress, compact: compact),
+                        const SizedBox(height: 28),
                         _GenerationStatusPanel(
                           active: active,
                           progress: progress,
                         ),
                         const SizedBox(height: 18),
-                        _GenerationMetrics(
-                          thinkingMode: thinkingMode,
-                          progress: progress,
-                        ),
+                        _StructuredGenerationPanel(progress: progress),
                         const SizedBox(height: 22),
                         _GenerationTimeline(
                           steps: _steps,
@@ -263,14 +541,9 @@ class _LoadingState extends ConsumerWidget {
 }
 
 class _GenerationHero extends StatelessWidget {
-  const _GenerationHero({
-    required this.progress,
-    required this.thinkingMode,
-    required this.compact,
-  });
+  const _GenerationHero({required this.progress, required this.compact});
 
   final LessonGenerationProgress progress;
-  final bool thinkingMode;
   final bool compact;
 
   @override
@@ -308,9 +581,7 @@ class _GenerationHero extends StatelessWidget {
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
           child: Text(
-            thinkingMode
-                ? 'Gemma is reasoning locally on this device.'
-                : 'Gemma is working locally on this device.',
+            'Gemma is building a structured lesson kit on this device.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: tokens.inkMuted,
@@ -336,128 +607,79 @@ class _GenerationStatusPanel extends StatelessWidget {
     final tokens = context.tokens;
     final percent = (progress.progress.clamp(0, 1) * 100).round();
 
-    return Container(
-      decoration: BoxDecoration(
-        color: tokens.surfaceMuted,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: tokens.oat),
-      ),
-      padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 260),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
-            layoutBuilder: (currentChild, previousChildren) {
-              return Stack(
-                alignment: Alignment.topLeft,
-                children: [...previousChildren, ?currentChild],
-              );
-            },
-            child: Column(
-              key: ValueKey(active.title),
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  active.title,
-                  style: TextStyle(
-                    color: tokens.ink,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    height: 1.18,
-                    letterSpacing: 0,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  active.detail,
-                  style: TextStyle(
-                    color: tokens.inkMuted,
-                    fontSize: 14,
-                    height: 1.45,
-                    letterSpacing: 0,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 18),
-          Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 260),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          layoutBuilder: (currentChild, previousChildren) {
+            return Stack(
+              alignment: Alignment.topLeft,
+              children: [...previousChildren, ?currentChild],
+            );
+          },
+          child: Column(
+            key: ValueKey(active.title),
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'PROGRESS',
+                active.title,
                 style: TextStyle(
-                  color: tokens.inkSubtle,
-                  fontFamily: 'monospace',
-                  fontSize: 11,
+                  color: tokens.ink,
+                  fontSize: 22,
                   fontWeight: FontWeight.w700,
+                  height: 1.16,
                   letterSpacing: 0,
                 ),
               ),
-              const Spacer(),
+              const SizedBox(height: 7),
               Text(
-                '$percent%',
+                active.detail,
                 style: TextStyle(
                   color: tokens.inkMuted,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  height: 1.2,
+                  fontSize: 14,
+                  height: 1.45,
                   letterSpacing: 0,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Semantics(
-            label: 'Lesson generation progress',
-            value: '$percent percent',
-            child: _GenerationProgressBar(value: progress.progress),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GenerationMetrics extends StatelessWidget {
-  const _GenerationMetrics({
-    required this.thinkingMode,
-    required this.progress,
-  });
-
-  final bool thinkingMode;
-  final LessonGenerationProgress progress;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth < 520) {
-          return Column(
-            children: [
-              _ReasoningRunPanel(enabled: thinkingMode, progress: progress),
-              const SizedBox(height: 12),
-              _LiveTokenMeter(progress: progress),
-            ],
-          );
-        }
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+        const SizedBox(height: 18),
+        Row(
           children: [
-            Expanded(
-              child: _ReasoningRunPanel(
-                enabled: thinkingMode,
-                progress: progress,
+            Text(
+              'PROGRESS',
+              style: TextStyle(
+                color: tokens.inkSubtle,
+                fontFamily: 'monospace',
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0,
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(child: _LiveTokenMeter(progress: progress)),
+            const Spacer(),
+            Text(
+              '$percent%',
+              style: TextStyle(
+                color: tokens.inkMuted,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                height: 1.2,
+                letterSpacing: 0,
+              ),
+            ),
           ],
-        );
-      },
+        ),
+        const SizedBox(height: 8),
+        Semantics(
+          label: 'Lesson generation progress',
+          value: '$percent percent',
+          child: _GenerationProgressBar(value: progress.progress),
+        ),
+      ],
     );
   }
 }
@@ -509,99 +731,85 @@ class _GenerationTimeline extends StatelessWidget {
   }
 }
 
-class _ReasoningRunPanel extends StatelessWidget {
-  const _ReasoningRunPanel({required this.enabled, required this.progress});
+class _StructuredGenerationPanel extends StatelessWidget {
+  const _StructuredGenerationPanel({required this.progress});
 
-  final bool enabled;
   final LessonGenerationProgress progress;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final text = enabled
-        ? progress.reasoningPreview.isEmpty
-              ? 'Waiting for Gemma reasoning tokens...'
-              : progress.reasoningPreview
-        : 'Fast direct generation for this run.';
-    final countLabel = progress.reasoningCharacters == 1
-        ? '1 reasoning character'
-        : '${progress.reasoningCharacters} reasoning characters';
+    final detail = switch (progress.phase) {
+      LessonGenerationPhase.readingSource => 'Preparing the source page.',
+      LessonGenerationPhase.startingModel => 'Opening the offline model.',
+      LessonGenerationPhase.namingLesson ||
+      LessonGenerationPhase.writingObjectives ||
+      LessonGenerationPhase.draftingExplanation =>
+        'Writing one complete structured lesson kit.',
+      LessonGenerationPhase.preparingBoardNotes ||
+      LessonGenerationPhase.makingActivities ||
+      LessonGenerationPhase.makingQuestions ||
+      LessonGenerationPhase.addingHomework ||
+      LessonGenerationPhase.buildingGlossary =>
+        'Adding classroom steps, practice, questions, and homework.',
+      LessonGenerationPhase.checkingKit =>
+        'Checking the lesson kit before showing it.',
+      LessonGenerationPhase.complete => 'Ready.',
+      LessonGenerationPhase.idle => 'Starting.',
+    };
 
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: tokens.surfaceMuted,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: tokens.oat),
+        border: Border(
+          top: BorderSide(color: tokens.oat),
+          bottom: BorderSide(color: tokens.oat),
+        ),
       ),
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: tokens.surface,
-              borderRadius: BorderRadius.circular(7),
-              border: Border.all(color: tokens.oat),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: tokens.surface,
+                borderRadius: BorderRadius.circular(7),
+                border: Border.all(color: tokens.oat),
+              ),
+              child: const CupertinoActivityIndicator(radius: 8),
             ),
-            child: enabled && !progress.hasReasoning
-                ? const CupertinoActivityIndicator(radius: 8)
-                : Icon(
-                    AppIcons.idea(context),
-                    color: enabled ? tokens.ink : tokens.inkMuted,
-                    size: 17,
-                  ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Text(
-                      enabled ? 'REASONING ON' : 'REASONING OFF',
-                      style: TextStyle(
-                        color: tokens.inkSubtle,
-                        fontFamily: 'monospace',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0,
-                      ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'ON-DEVICE GENERATION',
+                    style: TextStyle(
+                      color: tokens.inkSubtle,
+                      fontFamily: 'monospace',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0,
                     ),
-                    if (enabled && progress.hasReasoning)
-                      Text(
-                        countLabel,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: tokens.inkMuted,
-                          fontSize: 12,
-                          height: 1.2,
-                          letterSpacing: 0,
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  text,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: tokens.ink,
-                    fontSize: 13,
-                    height: 1.45,
-                    letterSpacing: 0,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 6),
+                  Text(
+                    detail,
+                    style: TextStyle(
+                      color: tokens.ink,
+                      fontSize: 13,
+                      height: 1.45,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -685,100 +893,6 @@ class _LiveGenerationPulseState extends State<_LiveGenerationPulse>
                       : const CupertinoActivityIndicator(radius: 10),
                 ),
               ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _LiveTokenMeter extends StatelessWidget {
-  const _LiveTokenMeter({required this.progress});
-
-  final LessonGenerationProgress progress;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final tokenLabel = progress.generatedTokens == 1 ? 'token' : 'tokens';
-    final detail = progress.hasGeneratedText
-        ? '${progress.generatedCharacters} characters drafted'
-        : 'Waiting for the first token';
-
-    return Container(
-      decoration: BoxDecoration(
-        color: tokens.surfaceMuted,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: tokens.oat),
-      ),
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final narrow = constraints.maxWidth < 270;
-          final output = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'LIVE OUTPUT',
-                style: TextStyle(
-                  color: tokens.inkSubtle,
-                  fontFamily: 'monospace',
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0,
-                ),
-              ),
-              const SizedBox(height: 6),
-              TweenAnimationBuilder<double>(
-                tween: Tween<double>(
-                  begin: 0,
-                  end: progress.generatedTokens.toDouble(),
-                ),
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                builder: (context, value, _) {
-                  return FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      '${value.round()} $tokenLabel',
-                      style: TextStyle(
-                        color: tokens.ink,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        height: 1.08,
-                        letterSpacing: 0,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          );
-          final detailText = Text(
-            detail,
-            textAlign: narrow ? TextAlign.left : TextAlign.right,
-            style: TextStyle(
-              color: tokens.inkMuted,
-              fontSize: 13,
-              height: 1.35,
-              letterSpacing: 0,
-            ),
-          );
-
-          if (narrow) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [output, const SizedBox(height: 8), detailText],
-            );
-          }
-
-          return Row(
-            children: [
-              Expanded(child: output),
-              const SizedBox(width: 16),
-              Flexible(child: detailText),
             ],
           );
         },

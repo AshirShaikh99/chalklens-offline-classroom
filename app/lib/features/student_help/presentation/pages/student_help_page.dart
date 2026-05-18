@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
@@ -70,7 +71,7 @@ class _StudentHelpPageState extends ConsumerState<StudentHelpPage> {
   final List<_ChatMessage> _messages = [
     const _ChatMessage(
       fromStudent: false,
-      text: 'Salaam. Choose a lesson context, then ask me what feels unclear.',
+      text: 'Ask me what feels unclear from your lesson.',
     ),
   ];
 
@@ -113,7 +114,7 @@ class _StudentHelpPageState extends ConsumerState<StudentHelpPage> {
     _scrollToBottom();
 
     final localReply = audioBytes == null
-        ? _localReplyFor(question: question, lessonKit: lesson)
+        ? _localReplyFor(lessonKit: lesson)
         : null;
     if (localReply != null) {
       await Future<void>.delayed(const Duration(milliseconds: 120));
@@ -126,9 +127,12 @@ class _StudentHelpPageState extends ConsumerState<StudentHelpPage> {
       return;
     }
 
-    final thinkingMode = ref.read(settingsProvider).modelSettings.thinkingMode;
+    final showReasoningControls = _showReasoningControlsFor(context);
+    final thinkingMode =
+        showReasoningControls &&
+        ref.read(settingsProvider).modelSettings.thinkingMode;
     setState(() {
-      _thinkingActive = true;
+      _thinkingActive = showReasoningControls;
       _thinkingEnabledForCurrentRun = thinkingMode;
       _thinkingText = '';
     });
@@ -143,13 +147,19 @@ class _StudentHelpPageState extends ConsumerState<StudentHelpPage> {
             language: language ?? AppLanguage.english,
             audioBytes: audioBytes,
             lessonKit: lesson,
-            onThinking: (content) {
-              if (!mounted || content.trim().isEmpty) return;
-              setState(() {
-                _thinkingText = _appendReasoningText(_thinkingText, content);
-              });
-              _scrollToBottom();
-            },
+            thinkingModeOverride: thinkingMode,
+            onThinking: showReasoningControls
+                ? (content) {
+                    if (!mounted || content.trim().isEmpty) return;
+                    setState(() {
+                      _thinkingText = _appendReasoningText(
+                        _thinkingText,
+                        content,
+                      );
+                    });
+                    _scrollToBottom();
+                  }
+                : null,
           );
       if (!mounted) return;
       final reasoning = _thinkingText.trim();
@@ -386,17 +396,7 @@ class _StudentHelpPageState extends ConsumerState<StudentHelpPage> {
     });
   }
 
-  String? _localReplyFor({
-    required String question,
-    required LessonKit? lessonKit,
-  }) {
-    if (_isGreeting(question)) {
-      if (lessonKit == null) {
-        return 'Salaam. I am ready, but I need a selected lesson first. Generate or open a saved lesson, then ask me about that topic.';
-      }
-      return 'Salaam. I am ready to help with "${lessonKit.lessonTitle}". Ask me which part feels confusing.';
-    }
-
+  String? _localReplyFor({required LessonKit? lessonKit}) {
     if (lessonKit == null) {
       return 'I need a selected lesson before I can answer safely. Generate a lesson kit or open a saved lesson, then ask me again.';
     }
@@ -404,29 +404,27 @@ class _StudentHelpPageState extends ConsumerState<StudentHelpPage> {
     return null;
   }
 
-  bool _isGreeting(String text) {
-    final normalized = text
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z\s]'), ' ')
-        .trim()
-        .replaceAll(RegExp(r'\s+'), ' ');
-    const greetings = {
-      'hi',
-      'hello',
-      'hey',
-      'salam',
-      'salaam',
-      'assalamualaikum',
-      'assalamu alaikum',
-    };
-    return greetings.contains(normalized);
-  }
-
   String _errorReplyFor(Object error) {
     if (error is ModelUnavailableException) {
       return error.message;
     }
-    return 'I could not reach Gemma 4 for this answer. Please try again in a moment.';
+    return 'I could not reach the offline model for this answer. Please try again in a moment.';
+  }
+
+  bool _voiceInputAvailableFor(BuildContext context) {
+    final platformSupportsRecorder =
+        defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+    final mobileSizedSurface = MediaQuery.sizeOf(context).shortestSide < 700;
+    return platformSupportsRecorder && mobileSizedSurface;
+  }
+
+  bool _showReasoningControlsFor(BuildContext context) {
+    final mobilePlatform =
+        defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+    final mobileSizedSurface = MediaQuery.sizeOf(context).shortestSide < 700;
+    return mobilePlatform && mobileSizedSurface;
   }
 
   @override
@@ -446,6 +444,8 @@ class _StudentHelpPageState extends ConsumerState<StudentHelpPage> {
       ),
     );
     final showModelActivity = _thinkingActive;
+    final voiceInputAvailable = _voiceInputAvailableFor(context);
+    final showReasoningControls = _showReasoningControlsFor(context);
 
     return AdaptivePageScaffold(
       title: 'Student help',
@@ -455,6 +455,8 @@ class _StudentHelpPageState extends ConsumerState<StudentHelpPage> {
         busy: _busy,
         recordingVoice: _recordingVoice,
         recordingDuration: _voiceRecordingDuration,
+        voiceInputAvailable: voiceInputAvailable,
+        showReasoningControls: showReasoningControls,
         thinkingMode: thinkingMode,
         onSubmitted: (_) => _send(),
         onSend: _send,
@@ -527,150 +529,153 @@ class _LessonContextSelector extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
+      child: DecoratedBox(
         decoration: BoxDecoration(
-          color: tokens.surface,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: tokens.oat),
+          border: Border(
+            top: BorderSide(color: tokens.oat),
+            bottom: BorderSide(color: tokens.oat),
+          ),
         ),
-        padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
-        child: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: selected.hasLesson
-                    ? tokens.washBlue
-                    : tokens.surfaceMuted,
-                borderRadius: BorderRadius.circular(6),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(0, 12, 0, 12),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: selected.hasLesson
+                      ? tokens.washBlue
+                      : tokens.surfaceMuted,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Icon(
+                  selected.hasLesson
+                      ? AppIcons.lesson(context)
+                      : AppIcons.bookmark(context),
+                  size: 18,
+                  color: selected.hasLesson
+                      ? tokens.washBlueInk
+                      : tokens.inkSubtle,
+                ),
               ),
-              child: Icon(
-                selected.hasLesson
-                    ? AppIcons.lesson(context)
-                    : AppIcons.bookmark(context),
-                size: 18,
-                color: selected.hasLesson
-                    ? tokens.washBlueInk
-                    : tokens.inkSubtle,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    kit?.lessonTitle ?? 'No lesson selected',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: tokens.ink,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      height: 1.2,
-                      letterSpacing: 0,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  if (kit == null)
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Text(
-                      savedLessonsLoading
-                          ? 'Loading saved lessons'
-                          : 'Create or open a saved lesson',
+                      kit?.lessonTitle ?? 'No lesson selected',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: tokens.inkMuted,
-                        fontSize: 12,
-                        height: 1.25,
+                        color: tokens.ink,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
                         letterSpacing: 0,
                       ),
-                    )
-                  else
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: [
-                        _LessonContextTag(label: selected.source),
-                        _LessonContextTag(label: kit.grade),
-                        _LessonContextTag(label: kit.subject),
-                      ],
                     ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            if (savedLessonsLoading && !hasChoices)
-              Padding(
-                padding: const EdgeInsets.only(right: 4),
-                child: SizedBox.square(
-                  dimension: 20,
-                  child: const AdaptiveProgressIndicator(),
-                ),
-              )
-            else if (hasChoices)
-              Material(
-                color: Colors.transparent,
-                child: PopupMenuButton<String>(
-                  tooltip: 'Choose lesson context',
-                  position: PopupMenuPosition.under,
-                  onSelected: (value) {
-                    if (value == _currentValue) {
-                      onSelectCurrent?.call();
-                      return;
-                    }
-                    onSelectSaved(value);
-                  },
-                  itemBuilder: (context) => [
-                    if (activeLesson != null)
-                      PopupMenuItem<String>(
-                        value: _currentValue,
-                        child: _LessonMenuItem(
-                          title: activeLesson!.lessonTitle,
-                          detail: 'Current lesson',
-                          selected: selected.savedLessonId == null,
+                    const SizedBox(height: 5),
+                    if (kit == null)
+                      Text(
+                        savedLessonsLoading
+                            ? 'Loading saved lessons'
+                            : 'Create or open a saved lesson',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: tokens.inkMuted,
+                          fontSize: 12,
+                          height: 1.25,
+                          letterSpacing: 0,
                         ),
-                      ),
-                    for (final lesson in savedLessons)
-                      PopupMenuItem<String>(
-                        value: lesson.id,
-                        child: _LessonMenuItem(
-                          title: lesson.kit.lessonTitle,
-                          detail:
-                              '${lesson.context.grade} · ${lesson.context.subject}',
-                          selected: selected.savedLessonId == lesson.id,
-                        ),
+                      )
+                    else
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          _LessonContextTag(label: selected.source),
+                          _LessonContextTag(label: kit.grade),
+                          _LessonContextTag(label: kit.subject),
+                        ],
                       ),
                   ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (savedLessonsLoading && !hasChoices)
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
                   child: SizedBox.square(
-                    dimension: 40,
-                    child: Center(
-                      child: Icon(
-                        useCupertino(context)
-                            ? CupertinoIcons.chevron_down
-                            : Icons.expand_more,
-                        color: tokens.inkMuted,
-                        size: 19,
+                    dimension: 20,
+                    child: const AdaptiveProgressIndicator(),
+                  ),
+                )
+              else if (hasChoices)
+                Material(
+                  color: Colors.transparent,
+                  child: PopupMenuButton<String>(
+                    tooltip: 'Choose lesson context',
+                    position: PopupMenuPosition.under,
+                    onSelected: (value) {
+                      if (value == _currentValue) {
+                        onSelectCurrent?.call();
+                        return;
+                      }
+                      onSelectSaved(value);
+                    },
+                    itemBuilder: (context) => [
+                      if (activeLesson != null)
+                        PopupMenuItem<String>(
+                          value: _currentValue,
+                          child: _LessonMenuItem(
+                            title: activeLesson!.lessonTitle,
+                            detail: 'Current lesson',
+                            selected: selected.savedLessonId == null,
+                          ),
+                        ),
+                      for (final lesson in savedLessons)
+                        PopupMenuItem<String>(
+                          value: lesson.id,
+                          child: _LessonMenuItem(
+                            title: lesson.kit.lessonTitle,
+                            detail:
+                                '${lesson.context.grade} · ${lesson.context.subject}',
+                            selected: selected.savedLessonId == lesson.id,
+                          ),
+                        ),
+                    ],
+                    child: SizedBox.square(
+                      dimension: 40,
+                      child: Center(
+                        child: Icon(
+                          useCupertino(context)
+                              ? CupertinoIcons.chevron_down
+                              : Icons.expand_more,
+                          color: tokens.inkMuted,
+                          size: 19,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              )
-            else
-              Tooltip(
-                message: 'Saved lessons',
-                child: IconButton(
-                  onPressed: onOpenSavedLessons,
-                  icon: Icon(
-                    AppIcons.chevronRight(context),
-                    color: tokens.inkMuted,
-                    size: 18,
+                )
+              else
+                Tooltip(
+                  message: 'Saved lessons',
+                  child: IconButton(
+                    onPressed: onOpenSavedLessons,
+                    icon: Icon(
+                      AppIcons.chevronRight(context),
+                      color: tokens.inkMuted,
+                      size: 18,
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -771,6 +776,8 @@ class _StudentHelpComposer extends StatelessWidget {
     required this.busy,
     required this.recordingVoice,
     required this.recordingDuration,
+    required this.voiceInputAvailable,
+    required this.showReasoningControls,
     required this.thinkingMode,
     required this.onSubmitted,
     required this.onSend,
@@ -782,6 +789,8 @@ class _StudentHelpComposer extends StatelessWidget {
   final bool busy;
   final bool recordingVoice;
   final Duration recordingDuration;
+  final bool voiceInputAvailable;
+  final bool showReasoningControls;
   final bool thinkingMode;
   final ValueChanged<String> onSubmitted;
   final VoidCallback onSend;
@@ -799,55 +808,66 @@ class _StudentHelpComposer extends StatelessWidget {
           border: Border(top: BorderSide(color: tokens.oat)),
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ReasoningToggle(
-                compact: true,
-                enabled: thinkingMode,
-                onChanged: busy ? null : onThinkingModeChanged,
-                detail: busy
-                    ? 'Applies to the next answer.'
-                    : 'Show the model trace while answering.',
-              ),
+              if (showReasoningControls)
+                ReasoningToggle(
+                  compact: true,
+                  enabled: thinkingMode,
+                  onChanged: busy ? null : onThinkingModeChanged,
+                  detail: busy
+                      ? 'Applies to the next answer.'
+                      : 'Show the model trace while answering.',
+                ),
               if (recordingVoice) ...[
-                const SizedBox(height: 10),
+                if (showReasoningControls) const SizedBox(height: 10),
                 _RecordingStatus(duration: recordingDuration),
               ],
-              const SizedBox(height: 10),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  _VoiceButton(
-                    busy: busy,
-                    recording: recordingVoice,
-                    onTap: onVoiceTap,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _ChatInputField(
-                      controller: controller,
-                      placeholder: 'Ask a question',
-                      enabled: !recordingVoice,
-                      onSubmitted: onSubmitted,
+              if (showReasoningControls || recordingVoice)
+                const SizedBox(height: 10),
+              SizedBox(
+                height: 52,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (voiceInputAvailable) ...[
+                      Center(
+                        child: _VoiceButton(
+                          busy: busy,
+                          recording: recordingVoice,
+                          onTap: onVoiceTap,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Expanded(
+                      child: _ChatInputField(
+                        controller: controller,
+                        placeholder: 'Ask a question',
+                        enabled: !recordingVoice,
+                        onSubmitted: onSubmitted,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  ValueListenableBuilder<TextEditingValue>(
-                    valueListenable: controller,
-                    builder: (context, value, _) {
-                      final canSend =
-                          value.text.trim().isNotEmpty &&
-                          !busy &&
-                          !recordingVoice;
-                      return _SendButton(
-                        busy: busy,
-                        onTap: canSend ? onSend : null,
-                      );
-                    },
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    Center(
+                      child: ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: controller,
+                        builder: (context, value, _) {
+                          final canSend =
+                              value.text.trim().isNotEmpty &&
+                              !busy &&
+                              !recordingVoice;
+                          return _SendButton(
+                            busy: busy,
+                            onTap: canSend ? onSend : null,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -1146,45 +1166,59 @@ class _ChatInputField extends StatelessWidget {
     final border = Border.all(color: tokens.oat);
 
     if (useCupertino(context)) {
-      return Container(
-        height: 44,
-        decoration: BoxDecoration(
-          color: tokens.surface,
-          borderRadius: borderRadius,
-          border: border,
-        ),
-        child: CupertinoTextField(
-          controller: controller,
-          enabled: enabled,
-          placeholder: placeholder,
-          placeholderStyle: TextStyle(color: tokens.inkSubtle),
-          decoration: null,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          textInputAction: TextInputAction.send,
-          textAlignVertical: TextAlignVertical.center,
-          onSubmitted: onSubmitted,
-          cursorColor: tokens.ink,
-          style: TextStyle(color: tokens.ink, fontSize: 16, letterSpacing: 0),
+      return SizedBox.expand(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: tokens.surface,
+            borderRadius: borderRadius,
+            border: border,
+          ),
+          child: CupertinoTextField(
+            controller: controller,
+            enabled: enabled,
+            placeholder: placeholder,
+            placeholderStyle: TextStyle(color: tokens.inkSubtle),
+            decoration: null,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            textInputAction: TextInputAction.send,
+            textAlignVertical: TextAlignVertical.center,
+            onSubmitted: onSubmitted,
+            cursorColor: tokens.ink,
+            style: TextStyle(color: tokens.ink, fontSize: 16, letterSpacing: 0),
+          ),
         ),
       );
     }
 
-    return Container(
-      height: 44,
-      decoration: BoxDecoration(
-        color: tokens.surface,
-        borderRadius: borderRadius,
-        border: border,
-      ),
+    return SizedBox.expand(
       child: TextField(
         controller: controller,
         enabled: enabled,
         decoration: InputDecoration(
           hintText: placeholder,
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+          isDense: true,
+          filled: true,
+          fillColor: tokens.surface,
+          border: OutlineInputBorder(
+            borderRadius: borderRadius,
+            borderSide: BorderSide(color: tokens.oat),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: borderRadius,
+            borderSide: BorderSide(color: tokens.oat),
+          ),
+          disabledBorder: OutlineInputBorder(
+            borderRadius: borderRadius,
+            borderSide: BorderSide(color: tokens.oat),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: borderRadius,
+            borderSide: BorderSide(color: tokens.inkMuted),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 16,
+          ),
         ),
         style: Theme.of(context).textTheme.bodyMedium,
         cursorColor: tokens.ink,

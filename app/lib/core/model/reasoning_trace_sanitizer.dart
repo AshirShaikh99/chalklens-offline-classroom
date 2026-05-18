@@ -54,6 +54,82 @@ class ReasoningTraceFilter {
   }
 }
 
+class InlineReasoningSplit {
+  const InlineReasoningSplit({this.text = '', this.reasoning = ''});
+
+  final String text;
+  final String reasoning;
+
+  bool get isEmpty => text.isEmpty && reasoning.isEmpty;
+}
+
+/// Splits runtimes that emit thinking traces inline with normal text instead
+/// of using `ThinkingResponse`.
+class InlineReasoningSplitter {
+  static const List<String> _startMarkers = [
+    '<think>',
+    '<|channel>thought\n',
+    '<|channel>thought',
+  ];
+  static const List<String> _endMarkers = ['</think>', '<channel|>'];
+  static final List<String> _allMarkers = [..._startMarkers, ..._endMarkers];
+
+  String _pending = '';
+  bool _inReasoning = false;
+
+  InlineReasoningSplit add(String chunk) {
+    if (chunk.isEmpty) return const InlineReasoningSplit();
+    _pending = '$_pending$chunk';
+    return _drain(keepMarkerPrefixes: true);
+  }
+
+  InlineReasoningSplit flush() => _drain(keepMarkerPrefixes: false);
+
+  InlineReasoningSplit _drain({required bool keepMarkerPrefixes}) {
+    final text = StringBuffer();
+    final reasoning = StringBuffer();
+
+    while (_pending.isNotEmpty) {
+      if (_inReasoning) {
+        final end = _firstMarker(_pending, _endMarkers);
+        if (end == null) {
+          final drainLength = keepMarkerPrefixes
+              ? _safeDrainLength(_pending, _endMarkers)
+              : _pending.length;
+          if (drainLength == 0) break;
+          reasoning.write(_pending.substring(0, drainLength));
+          _pending = _pending.substring(drainLength);
+          continue;
+        }
+
+        reasoning.write(_pending.substring(0, end.index));
+        _pending = _pending.substring(end.index + end.marker.length);
+        _inReasoning = false;
+      } else {
+        final start = _firstMarker(_pending, _startMarkers);
+        if (start == null) {
+          final drainLength = keepMarkerPrefixes
+              ? _safeDrainLength(_pending, _allMarkers)
+              : _pending.length;
+          if (drainLength == 0) break;
+          text.write(_pending.substring(0, drainLength));
+          _pending = _pending.substring(drainLength);
+          continue;
+        }
+
+        text.write(_pending.substring(0, start.index));
+        _pending = _pending.substring(start.index + start.marker.length);
+        _inReasoning = true;
+      }
+    }
+
+    return InlineReasoningSplit(
+      text: text.toString(),
+      reasoning: reasoning.toString(),
+    );
+  }
+}
+
 List<_PromptEcho> _preparePromptEchoes(Iterable<String> promptEchoes) {
   final echoes =
       promptEchoes
@@ -125,6 +201,34 @@ String _stripThinkingMarkers(String value) {
       .replaceAll('<channel|>', '')
       .replaceAll('<think>', '')
       .replaceAll('</think>', '');
+}
+
+_MarkerMatch? _firstMarker(String value, List<String> markers) {
+  _MarkerMatch? best;
+  for (final marker in markers) {
+    final index = value.indexOf(marker);
+    if (index == -1) continue;
+    if (best == null || index < best.index) {
+      best = _MarkerMatch(index: index, marker: marker);
+    }
+  }
+  return best;
+}
+
+int _safeDrainLength(String value, List<String> markers) {
+  var keep = 0;
+  for (final marker in markers) {
+    final maxSuffix = value.length < marker.length - 1
+        ? value.length
+        : marker.length - 1;
+    for (var length = maxSuffix; length > keep; length--) {
+      if (marker.startsWith(value.substring(value.length - length))) {
+        keep = length;
+        break;
+      }
+    }
+  }
+  return value.length - keep;
 }
 
 String _stripLeadingTurnMarkers(String value) {
@@ -199,6 +303,13 @@ class _PromptEcho {
   _PromptEcho(String text) : normalized = _normalizeWithOffsets(text).text;
 
   final String normalized;
+}
+
+class _MarkerMatch {
+  const _MarkerMatch({required this.index, required this.marker});
+
+  final int index;
+  final String marker;
 }
 
 class _NormalizedText {

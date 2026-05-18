@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/model/gemma_model_installer.dart';
@@ -14,6 +18,8 @@ class ModelSetupState {
     this.activity = ModelSetupActivity.idle,
     this.progress,
     this.notice,
+    this.download,
+    this.allowMobileData = false,
   });
 
   final ModelFileCheck check;
@@ -21,6 +27,8 @@ class ModelSetupState {
   final ModelSetupActivity activity;
   final double? progress;
   final String? notice;
+  final ModelDownloadStatus? download;
+  final bool allowMobileData;
 
   bool get isBusy => activity != ModelSetupActivity.idle;
   bool get isReady => check.isReady && runtimeReady;
@@ -34,6 +42,9 @@ class ModelSetupState {
     bool clearProgress = false,
     String? notice,
     bool clearNotice = false,
+    ModelDownloadStatus? download,
+    bool clearDownload = false,
+    bool? allowMobileData,
   }) {
     return ModelSetupState(
       check: check ?? this.check,
@@ -41,6 +52,8 @@ class ModelSetupState {
       activity: activity ?? this.activity,
       progress: clearProgress ? null : progress ?? this.progress,
       notice: clearNotice ? null : notice ?? this.notice,
+      download: clearDownload ? null : download ?? this.download,
+      allowMobileData: allowMobileData ?? this.allowMobileData,
     );
   }
 }
@@ -55,6 +68,9 @@ final modelSetupProvider =
     );
 
 class ModelSetupNotifier extends AsyncNotifier<ModelSetupState> {
+  static const String _allowMobileDataPrefKey =
+      'chalklens.modelSetup.allowMobileData';
+
   /// Hosts the user is allowed to download a model from. Restricts the
   /// runtime URL field to known good origins, so a misuser cannot point the
   /// app at an arbitrary server, breaking the offline-by-default promise.
@@ -69,6 +85,8 @@ class ModelSetupNotifier extends AsyncNotifier<ModelSetupState> {
   };
 
   GemmaModelInstaller get _installer => ref.read(gemmaModelInstallerProvider);
+  StreamSubscription<ModelDownloadStatus>? _downloadSub;
+
   ModelSetupState? get _current {
     final current = state;
     return switch (current) {
@@ -84,8 +102,26 @@ class ModelSetupNotifier extends AsyncNotifier<ModelSetupState> {
 
   @override
   Future<ModelSetupState> build() async {
+    ref.onDispose(() {
+      _downloadSub?.cancel();
+      _downloadSub = null;
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    final allowMobile = prefs.getBool(_allowMobileDataPrefKey) ?? false;
+
     final check = await _installer.inspect(verifyChecksum: true);
-    return _stateForCheck(check);
+    final initial = await _stateForCheck(check);
+    final withPrefs = initial.copyWith(allowMobileData: allowMobile);
+
+    // If a download was already in flight from a previous app session, attach
+    // to it now so the UI can pick up exactly where it left off.
+    final hasInFlight = await _installer.hasInProgressDownload();
+    if (hasInFlight) {
+      _subscribeToDownloadStatus();
+      return _applyDownloadStatus(withPrefs, _installer.currentDownloadStatus);
+    }
+    return withPrefs;
   }
 
   Future<void> refresh() async {
@@ -102,16 +138,24 @@ class ModelSetupNotifier extends AsyncNotifier<ModelSetupState> {
 
     state = await AsyncValue.guard(() async {
       final check = await _installer.inspect(verifyChecksum: true);
-      return _stateForCheck(check);
+      final next = await _stateForCheck(check);
+      final pref = current?.allowMobileData ?? false;
+      return next.copyWith(allowMobileData: pref);
     });
   }
 
   Future<void> importFromFiles() async {
-    final result = await FilePicker.pickFiles(
-      allowMultiple: false,
-      type: FileType.any,
-      withData: false,
-    );
+    final FilePickerResult? result;
+    try {
+      result = await FilePicker.pickFiles(
+        allowMultiple: false,
+        type: FileType.any,
+        withData: false,
+      );
+    } on PlatformException catch (e) {
+      _setNotice(_friendlyFilePickerError(e));
+      return;
+    }
     final path = result?.files.single.path;
     if (path == null) return;
 
@@ -122,7 +166,24 @@ class ModelSetupNotifier extends AsyncNotifier<ModelSetupState> {
     );
   }
 
+  Future<void> startDefaultDownload() async {
+    final configured = GemmaModelInstaller.defaultDownloadUrl;
+    if (configured.trim().isEmpty) {
+      _setNotice(
+        'No model URL was configured at build time. Set GEMMA_MODEL_URL '
+        'and rebuild, or import '
+        '${GemmaModelInstaller.defaultModelDisplayName} from device storage.',
+      );
+      return;
+    }
+    return downloadFromUrl(configured);
+  }
+
   Future<void> downloadFromUrl(String rawUrl) async {
+    if (_installRunning) {
+      _log('ignored downloadFromUrl; install already running');
+      return;
+    }
     final uri = Uri.tryParse(rawUrl.trim());
     if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
       _setNotice('Enter a direct model download URL first.');
@@ -133,8 +194,7 @@ class ModelSetupNotifier extends AsyncNotifier<ModelSetupState> {
       return;
     }
     final host = uri.host.toLowerCase();
-    final allowed = _isHostAllowed(host);
-    if (!allowed) {
+    if (!_isHostAllowed(host)) {
       _setNotice(
         'Downloads are only allowed from trusted hosts '
         '(${_allowedDownloadHosts.join(', ')}).',
@@ -142,11 +202,36 @@ class ModelSetupNotifier extends AsyncNotifier<ModelSetupState> {
       return;
     }
 
-    await _runInstall(
-      activity: ModelSetupActivity.downloading,
-      operation: () =>
-          _installer.downloadModelFile(uri, onProgress: _setProgress),
+    final current = _current;
+    final allowMobile = current?.allowMobileData ?? false;
+    _subscribeToDownloadStatus();
+    try {
+      await _installer.startBackgroundDownload(uri, requiresWiFi: !allowMobile);
+    } catch (e) {
+      _log('startBackgroundDownload failed: $e');
+      _setNotice(_friendlyError(e));
+    }
+  }
+
+  Future<void> pauseDownload() => _installer.pauseDownload();
+  Future<void> resumeDownload() => _installer.resumeDownload();
+
+  Future<void> cancelDownload() async {
+    await _installer.cancelDownload();
+    final fallback = await _installer.inspect(verifyChecksum: true);
+    final pref = _current?.allowMobileData ?? false;
+    final next = await _stateForCheck(fallback);
+    state = AsyncValue.data(
+      next.copyWith(allowMobileData: pref, clearDownload: true),
     );
+  }
+
+  Future<void> setAllowMobileData(bool value) async {
+    final current = _current;
+    if (current == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_allowMobileDataPrefKey, value);
+    state = AsyncValue.data(current.copyWith(allowMobileData: value));
   }
 
   /// A URL is accepted when its host is on the static allowlist OR matches
@@ -163,6 +248,74 @@ class ModelSetupNotifier extends AsyncNotifier<ModelSetupState> {
     return configured.host.toLowerCase() == host;
   }
 
+  void _subscribeToDownloadStatus() {
+    if (_downloadSub != null) return;
+    _downloadSub = _installer.downloadStatus.listen(_onDownloadStatus);
+  }
+
+  void _onDownloadStatus(ModelDownloadStatus status) {
+    final current = _current;
+    if (current == null) return;
+
+    if (status.state == ModelDownloadState.ready) {
+      _downloadSub?.cancel();
+      _downloadSub = null;
+      // Re-run the post-install verification flow so runtime is registered.
+      unawaited(_finalizeAfterReady(status));
+      return;
+    }
+
+    state = AsyncValue.data(_applyDownloadStatus(current, status));
+  }
+
+  Future<void> _finalizeAfterReady(ModelDownloadStatus status) async {
+    final current = _current;
+    if (current == null) return;
+
+    final result =
+        status.result ?? await _installer.inspect(verifyChecksum: true);
+    final next = await _stateForCheck(
+      result,
+      successNotice: 'Offline model verified and ready.',
+    );
+    state = AsyncValue.data(
+      next.copyWith(
+        allowMobileData: current.allowMobileData,
+        clearDownload: true,
+        clearProgress: true,
+      ),
+    );
+  }
+
+  ModelSetupState _applyDownloadStatus(
+    ModelSetupState current,
+    ModelDownloadStatus status,
+  ) {
+    final activity = switch (status.state) {
+      ModelDownloadState.idle => ModelSetupActivity.idle,
+      ModelDownloadState.ready => ModelSetupActivity.idle,
+      ModelDownloadState.failed => ModelSetupActivity.idle,
+      ModelDownloadState.verifying => ModelSetupActivity.verifying,
+      _ => ModelSetupActivity.downloading,
+    };
+
+    final notice = switch (status.state) {
+      ModelDownloadState.failed => status.errorMessage,
+      _ => current.notice,
+    };
+
+    return current.copyWith(
+      activity: activity,
+      progress: status.fractionComplete,
+      clearProgress: status.fractionComplete == null,
+      download: status,
+      notice: notice,
+      clearNotice:
+          status.state == ModelDownloadState.running &&
+          (current.notice == null || current.notice == status.errorMessage),
+    );
+  }
+
   Future<void> _runInstall({
     required ModelSetupActivity activity,
     required Future<ModelFileCheck> Function() operation,
@@ -174,14 +327,10 @@ class ModelSetupNotifier extends AsyncNotifier<ModelSetupState> {
     _log('${activity.name} started');
 
     final current = _current;
+    final allowMobile = current?.allowMobileData ?? false;
     if (current != null) {
       state = AsyncValue.data(
-        current.copyWith(
-          activity: activity,
-          progress: activity == ModelSetupActivity.downloading ? null : 0,
-          clearProgress: activity == ModelSetupActivity.downloading,
-          clearNotice: true,
-        ),
+        current.copyWith(activity: activity, progress: 0, clearNotice: true),
       );
     }
 
@@ -194,20 +343,24 @@ class ModelSetupNotifier extends AsyncNotifier<ModelSetupState> {
             check: check,
             activity: ModelSetupActivity.verifying,
             notice: 'Verifying runtime.',
+            allowMobileData: allowMobile,
           ),
         );
       }
-      state = AsyncValue.data(
-        await _stateForCheck(
-          check,
-          successNotice: 'Offline model verified and ready.',
-        ),
+      final next = await _stateForCheck(
+        check,
+        successNotice: 'Offline model verified and ready.',
       );
+      state = AsyncValue.data(next.copyWith(allowMobileData: allowMobile));
     } catch (e) {
       final fallback = await _installer.inspect(verifyChecksum: true);
       _log('${activity.name} failed: $e');
       state = AsyncValue.data(
-        ModelSetupState(check: fallback, notice: _friendlyError(e)),
+        ModelSetupState(
+          check: fallback,
+          notice: _friendlyError(e),
+          allowMobileData: allowMobile,
+        ),
       );
     }
   }
@@ -254,6 +407,13 @@ class ModelSetupNotifier extends AsyncNotifier<ModelSetupState> {
     final text = e.toString();
     const prefix = 'ModelUnavailableException: ';
     return text.startsWith(prefix) ? text.substring(prefix.length) : text;
+  }
+
+  String _friendlyFilePickerError(PlatformException e) {
+    if (e.code == 'ENTITLEMENT_NOT_FOUND') {
+      return 'macOS needs permission to open a selected model file. Rebuild the app and try Import again.';
+    }
+    return e.message ?? _friendlyError(e);
   }
 
   void _log(String message) {

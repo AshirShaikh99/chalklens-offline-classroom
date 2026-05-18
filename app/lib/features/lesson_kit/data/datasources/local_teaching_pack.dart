@@ -15,14 +15,25 @@ class LocalTeachingPack {
     return TeachingPackContext(
       subject: context.subject,
       grade: context.grade,
-      sourceConceptHints: _sourceConceptHints(passage),
+      sourceWordCount: _sourceWordCount(passage),
+      hasTextSource: passage != null && passage.trim().isNotEmpty,
+      sourceConceptHints: _sourceConceptHints(passage, subject: subject),
       pedagogyRules: _pedagogyRules(context),
       activityTemplates: _activityTemplates(subject),
       misconceptionChecks: _misconceptionChecks(subject),
     );
   }
 
-  List<String> _sourceConceptHints(String? passage) {
+  int _sourceWordCount(String? passage) {
+    final text = passage?.trim();
+    if (text == null || text.isEmpty) return 0;
+    return text
+        .split(RegExp(r'\s+'))
+        .where((word) => word.trim().isNotEmpty)
+        .length;
+  }
+
+  List<String> _sourceConceptHints(String? passage, {required String subject}) {
     final text = passage?.trim();
     if (text == null || text.isEmpty) {
       return const [
@@ -30,7 +41,7 @@ class LocalTeachingPack {
       ];
     }
 
-    final terms = _candidateTerms(text);
+    final terms = _candidateTerms(text, subject: subject);
     if (terms.isEmpty) {
       return const [
         'Use only the pasted textbook passage as the factual source.',
@@ -43,12 +54,17 @@ class LocalTeachingPack {
         .toList();
   }
 
-  List<String> _candidateTerms(String text) {
+  List<String> _candidateTerms(String text, {required String subject}) {
     final normalized = text
         .replaceAll(RegExp(r'[^A-Za-z0-9\s-]'), ' ')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
     if (normalized.isEmpty) return const [];
+
+    final knownTerms = _knownSubjectTerms(
+      normalized.toLowerCase(),
+      subject: subject,
+    );
 
     const stopWords = {
       'about',
@@ -58,7 +74,10 @@ class LocalTeachingPack {
       'between',
       'class',
       'could',
+      'definite',
       'every',
+      'example',
+      'examples',
       'from',
       'have',
       'into',
@@ -96,7 +115,37 @@ class LocalTeachingPack {
         return a.key.compareTo(b.key);
       });
 
-    return entries.map((entry) => entry.key).toList();
+    return [
+      ...knownTerms,
+      for (final entry in entries)
+        if (!knownTerms.contains(entry.key)) entry.key,
+    ];
+  }
+
+  List<String> _knownSubjectTerms(String lowerText, {required String subject}) {
+    if (!subject.contains('science')) return const [];
+    const terms = [
+      'matter',
+      'mass',
+      'volume',
+      'solid',
+      'liquid',
+      'gas',
+      'gases',
+      'particles',
+      'physical properties',
+      'change of state',
+      'melting',
+      'freezing',
+      'evaporation',
+      'boiling',
+      'condensation',
+      'sublimation',
+    ];
+    return [
+      for (final term in terms)
+        if (RegExp('\\b${RegExp.escape(term)}s?\\b').hasMatch(lowerText)) term,
+    ];
   }
 
   List<String> _pedagogyRules(LessonContextModel context) => [
@@ -184,6 +233,8 @@ class TeachingPackContext {
   const TeachingPackContext({
     required this.subject,
     required this.grade,
+    required this.sourceWordCount,
+    required this.hasTextSource,
     required this.sourceConceptHints,
     required this.pedagogyRules,
     required this.activityTemplates,
@@ -192,6 +243,8 @@ class TeachingPackContext {
 
   final String subject;
   final String grade;
+  final int sourceWordCount;
+  final bool hasTextSource;
   final List<String> sourceConceptHints;
   final List<String> pedagogyRules;
   final List<String> activityTemplates;

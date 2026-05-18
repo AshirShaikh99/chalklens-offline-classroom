@@ -36,7 +36,7 @@ PODS:
     - DKImagePickerController/PhotoGallery
     - Flutter
   - Flutter (1.0.0)
-  - flutter_gemma (0.14.5):
+  - flutter_gemma (0.15.1):
     - Flutter
     - MediaPipeTasksGenAI (= 0.10.33)
     - MediaPipeTasksGenAIC (= 0.10.33)
@@ -100,7 +100,7 @@ SPEC CHECKSUMS:
   DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
   file_picker: a0560bc09d61de87f12d246fc47d2119e6ef37be
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
-  flutter_gemma: f72a3975e8d3976830a1264f0ecf824ac0676595
+  flutter_gemma: e16d16aa30f6cc26dbe3b554e660f7e54822d0d5
   image_picker_ios: e0ece4aa2a75771a7de3fa735d26d90817041326
   large_file_handler: b37481e9b4972562ffcdc8f75700f47cd592bcec
   MediaPipeTasksGenAI: 8eed8e6d03fe26d30c4205cb5295ec7b394432ad

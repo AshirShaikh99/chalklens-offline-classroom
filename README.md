@@ -1,33 +1,65 @@
-# ChalkLens Offline Classroom
+# ChalkLens
 
-Textbook page to blackboard kit, offline.
+Offline lesson kits for teachers, powered by local Gemma 4 inference.
 
-ChalkLens is a Flutter app for low-resource classrooms where a teacher may have one phone, one textbook, and unreliable internet. It uses on-device Gemma 4 E2B LiteRT-LM to turn a textbook page into teacher-ready classroom material without sending the page to a cloud service.
+ChalkLens is a Flutter app for classrooms where teachers have textbook pages, PDFs, or scanned material, but cannot count on reliable internet during planning or teaching. It turns source lesson content into practical classroom material that a teacher can use from a laptop: teaching flow, blackboard notes, oral checks, homework, activities, and student follow-up help.
+
+The Kaggle demo focuses on a laptop-first macOS workflow because many teachers prepare and present from laptops, while phones can be too small for reading a full lesson or teaching from the screen.
+
+## Why This Exists
+
+Many education AI tools assume cloud access, fast internet, and comfortable devices. ChalkLens is built around a more constrained classroom reality:
+
+> The textbook is available. The teacher is ready. The internet may not be.
+
+The goal is not to replace teachers. ChalkLens helps with the heavy preparation work so the teacher can spend more time explaining, adapting examples, and checking student understanding.
 
 ## What It Does
 
-- Captures or imports a textbook page image.
-- Runs Gemma locally through `flutter_gemma` and LiteRT-LM.
-- Generates a structured classroom kit:
+- Imports textbook PDFs and image files.
+- Extracts PDF text locally on macOS.
+- Runs local OCR for image-based pages.
+- Uses Gemma 4 through LiteRT / Google AI Edge via `flutter_gemma`.
+- Generates a classroom-ready Lesson Kit:
   - simple explanation
+  - step-by-step teacher moves
   - blackboard notes
-  - oral quiz
-  - no-materials classroom activity
+  - misconceptions to check
+  - oral quiz questions
+  - group activity
   - homework
-  - key-terms glossary
-  - easier version for struggling students
-- Saves lessons locally on the device.
-- Lets students ask follow-up questions from the active lesson context.
+  - glossary
+  - easier explanation
+- Saves generated lessons locally.
+- Provides Student Help grounded in the selected lesson.
+- Includes Present mode for teaching directly from the laptop.
+- Exports a plain-text lesson file for sharing or archiving.
 
-## Why It Is Different
+## Demo Flow
 
-Most AI teaching tools assume reliable internet, laptops, or student-owned devices. ChalkLens is built around a narrower classroom reality:
+1. Open ChalkLens on macOS.
+2. Import a short textbook PDF from `test_assets/`.
+3. Review the extracted lesson text.
+4. Generate the Lesson Kit using local Gemma 4 inference.
+5. Show the teaching sequence, board notes, oral quiz, and homework.
+6. Open Present mode to demonstrate laptop-based teaching.
+7. Use Student Help to answer a follow-up question from the lesson context.
 
-> one teacher phone, one textbook page, one blackboard, no reliable internet.
+## Technical Overview
 
-The product is not trying to be a full LMS. The core proof is that a teacher can scan a page and get a blackboard-ready kit while offline.
+- **App framework:** Flutter
+- **Demo platform:** macOS desktop
+- **Model runtime:** Gemma 4 E2B `.litertlm` through `flutter_gemma`
+- **Inference path:** LiteRT / Google AI Edge local inference
+- **PDF text extraction:** native macOS `PDFKit`
+- **Image OCR:** native platform OCR bridge
+- **State management:** Riverpod
+- **Persistence:** local saved lessons and local model registration
+- **Robustness:** JSON repair, tool-call extraction, lesson depth guard, and recovery builder for imperfect model output
 
-## App
+The model file is not committed to this repository because it is large. The app supports importing or downloading the `.litertlm` file during Model Setup.
+
+## Run Locally
 
 The Flutter app lives in [`app/`](app/).
 
@@ -35,57 +67,34 @@ The Flutter app lives in [`app/`](app/).
 cd app
 flutter pub get
 flutter analyze
-flutter run
+flutter test
+flutter run -d macos
 ```
 
-The Gemma model file is not bundled in this repository. See [`app/README.md`](app/README.md) for model import/download instructions.
+For model setup details, see [`app/README.md`](app/README.md).
 
-### Model URL (build-time)
+## Test Assets
 
-The app downloads the model from a URL supplied at build time. Set it in
-a local `.env` file (gitignored) and use the helper scripts:
+The repository includes small sample classroom files for demos and testing:
 
-```bash
-cp app/.env.example app/.env
-# edit app/.env and set GEMMA_MODEL_URL=...
-
-./app/scripts/run.sh                  # development run
-./app/scripts/build-release-apk.sh    # release APK with the URL baked in
-```
-
-Without a URL configured, the Model Setup screen falls back to a manual
-input field so the app still works for source-builders without a `.env`.
-
-## Demo Story
-
-1. Turn on airplane mode.
-2. Open ChalkLens.
-3. Capture a Class 5 science textbook page.
-4. Choose class duration and student level.
-5. Generate the classroom kit locally.
-6. Show the teacher using board notes, oral questions, and the no-materials activity.
+- [`test_assets/class1_english_short_a_test_page.pdf`](test_assets/class1_english_short_a_test_page.pdf)
+- [`test_assets/class1_english_short_a_test_page.txt`](test_assets/class1_english_short_a_test_page.txt)
+- [`test_assets/class7_matter_test_page.txt`](test_assets/class7_matter_test_page.txt)
 
 ## Repository Layout
 
 ```text
-app/      Flutter application
-docs/     product, architecture, model, and submission notes
-demo/     demo assets and screenshots
-eval/     benchmark samples and results
+app/          Flutter application
+docs/         product, architecture, model, and submission notes
+test_assets/  small demo PDFs and source text
 ```
 
-## Hackathon Focus
+## Hackathon Positioning
 
-Primary angle:
+ChalkLens is built for the Gemma 4 Good Hackathon as an education and digital equity project:
 
-> Offline Gemma classroom intelligence for teachers in underserved schools.
+- **Main Track:** a working teacher-facing classroom assistant
+- **Impact Track:** Future of Education
+- **Special Technology Track:** LiteRT / Google AI Edge local Gemma 4 inference
 
-Technical proof points:
-
-- Gemma 4 image/text input
-- on-device LiteRT-LM inference
-- structured JSON generation
-- offline teaching pack retrieval before generation
-- local model install/import flow
-- local lesson persistence
-- English-first, globally understandable demo
+The core idea is simple: bring useful AI closer to classrooms where cloud AI is hardest to depend on.

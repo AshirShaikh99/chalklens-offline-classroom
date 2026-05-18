@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/section_header.dart';
 
-/// Standard wrapper for one section of the LessonKit. Plain oat-bordered
-/// surface; spacing carries structure rather than chrome.
+/// Standard wrapper for one section of the LessonKit. Native document-style
+/// spacing and dividers carry structure rather than boxed cards.
 class LessonSection extends StatelessWidget {
   const LessonSection({
     super.key,
@@ -22,19 +22,19 @@ class LessonSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return Container(
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: tokens.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: tokens.oat),
+        border: Border(top: BorderSide(color: tokens.oat)),
       ),
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SectionHeader(icon: icon, title: title, trailing: trailing),
-          child,
-        ],
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(0, 18, 0, 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(icon: icon, title: title, trailing: trailing),
+            child,
+          ],
+        ),
       ),
     );
   }

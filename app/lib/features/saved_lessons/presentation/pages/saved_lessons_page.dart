@@ -26,7 +26,8 @@ class SavedLessonsPage extends ConsumerWidget {
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
             itemCount: lessons.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 10),
+            separatorBuilder: (context, index) =>
+                Divider(height: 1, color: tokens.oat),
             itemBuilder: (context, index) {
               final lesson = lessons[index];
               return _SavedLessonTile(
@@ -200,9 +201,7 @@ class _AdaptiveLessonTileSurfaceState
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           decoration: BoxDecoration(
-            color: _down ? tokens.surfaceRaised : tokens.surface,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: tokens.oat),
+            color: _down ? tokens.surfaceMuted : Colors.transparent,
           ),
           child: widget.child,
         ),

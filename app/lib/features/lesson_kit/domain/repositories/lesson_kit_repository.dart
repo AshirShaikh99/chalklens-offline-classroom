@@ -5,7 +5,7 @@ import '../entities/lesson_generation_progress.dart';
 import '../entities/lesson_kit.dart';
 
 /// Domain-layer contract for generating a classroom kit. The data layer
-/// implements this against the on-device Gemma 4 backend.
+/// implements this against the configured on-device Gemma backend.
 /// Use cases depend on this interface — never on the impl.
 ///
 /// At least one of [passage] / [imageBytes] must be provided.

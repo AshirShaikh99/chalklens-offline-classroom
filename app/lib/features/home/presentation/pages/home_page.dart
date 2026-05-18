@@ -37,12 +37,12 @@ class HomePage extends ConsumerWidget {
                     const SizedBox(height: 32),
                     SoftReveal(
                       delay: const Duration(milliseconds: 80),
-                      child: _PrimaryLessonCommand(isWide: isWide),
+                      child: _PrimaryLessonCommand(),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 26),
                     SoftReveal(
                       delay: const Duration(milliseconds: 160),
-                      child: _ToolsList(isWide: isWide),
+                      child: const _ToolsList(),
                     ),
                   ],
                 ),
@@ -107,9 +107,7 @@ class _Greeting extends StatelessWidget {
 }
 
 class _PrimaryLessonCommand extends StatefulWidget {
-  const _PrimaryLessonCommand({required this.isWide});
-
-  final bool isWide;
+  const _PrimaryLessonCommand();
 
   @override
   State<_PrimaryLessonCommand> createState() => _PrimaryLessonCommandState();
@@ -120,57 +118,18 @@ class _PrimaryLessonCommandState extends State<_PrimaryLessonCommand> {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final stepText = widget.isWide
-        ? const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _StepMark(number: '1', label: 'Source'),
-              SizedBox(width: 12),
-              _StepMark(number: '2', label: 'Class'),
-              SizedBox(width: 12),
-              _StepMark(number: '3', label: 'Kit'),
-            ],
-          )
-        : const Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _StepMark(number: '1', label: 'Source'),
-              _StepMark(number: '2', label: 'Class'),
-              _StepMark(number: '3', label: 'Kit'),
-            ],
-          );
-
     final content = AnimatedScale(
-      scale: _down ? 0.992 : 1,
+      scale: _down ? 0.985 : 1,
       duration: const Duration(milliseconds: 120),
       curve: Curves.easeOutCubic,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        curve: Curves.easeOutCubic,
-        decoration: BoxDecoration(
-          color: _down ? tokens.surfaceRaised : tokens.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: tokens.oat),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: _HomeActionRow(
+          icon: AppIcons.camera(context),
+          title: 'Make a lesson kit',
+          detail: 'Scan or paste a textbook page.',
+          pressed: _down,
         ),
-        padding: EdgeInsets.all(widget.isWide ? 32 : 22),
-        child: widget.isWide
-            ? Row(
-                children: [
-                  Expanded(child: _CommandCopy(stepText: stepText)),
-                  const SizedBox(width: 32),
-                  _CommandAction(tokens: tokens),
-                ],
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _CommandCopy(stepText: stepText),
-                  const SizedBox(height: 24),
-                  _CommandAction(tokens: tokens),
-                ],
-              ),
       ),
     );
 
@@ -185,142 +144,101 @@ class _PrimaryLessonCommandState extends State<_PrimaryLessonCommand> {
   }
 }
 
-class _CommandCopy extends StatelessWidget {
-  const _CommandCopy({required this.stepText});
+class _HomeSectionLabel extends StatelessWidget {
+  const _HomeSectionLabel(this.label);
 
-  final Widget stepText;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'PRIMARY TASK',
-          style: TextStyle(
-            color: tokens.inkSubtle,
-            fontFamily: 'monospace',
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0,
-            fontSize: 11,
-          ),
-        ),
-        const SizedBox(height: 18),
-        Text(
-          'Make a lesson kit',
-          style: TextStyle(
-            color: tokens.ink,
-            fontSize: 28,
-            fontWeight: FontWeight.w600,
-            height: 1.04,
-            letterSpacing: 0,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Scan a page, tune the class context, and generate a ready teaching '
-          'document on this device.',
-          style: TextStyle(
-            color: tokens.inkMuted,
-            fontSize: 15,
-            height: 1.5,
-            letterSpacing: 0,
-          ),
-        ),
-        const SizedBox(height: 22),
-        stepText,
-      ],
+    return Text(
+      label,
+      style: TextStyle(
+        color: tokens.inkSubtle,
+        fontFamily: 'monospace',
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0,
+        fontSize: 11,
+      ),
     );
   }
 }
 
-class _CommandAction extends StatelessWidget {
-  const _CommandAction({required this.tokens});
+class _HomeActionRow extends StatelessWidget {
+  const _HomeActionRow({
+    required this.icon,
+    required this.title,
+    required this.detail,
+    this.pressed = false,
+  });
 
-  final AppTokens tokens;
+  final IconData icon;
+  final String title;
+  final String detail;
+  final bool pressed;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minWidth: 190),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+    final tokens = context.tokens;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 120),
+      padding: const EdgeInsets.symmetric(vertical: 14),
       decoration: BoxDecoration(
-        color: tokens.ink,
-        borderRadius: BorderRadius.circular(6),
+        border: Border(
+          bottom: BorderSide(color: tokens.oat),
+          top: BorderSide(color: tokens.oat),
+        ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(AppIcons.camera(context), size: 18, color: tokens.canvas),
-          const SizedBox(width: 9),
-          Text(
-            'Create lesson',
-            style: TextStyle(
-              color: tokens.canvas,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0,
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: pressed ? tokens.surfaceRaised : tokens.surfaceMuted,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 20, color: tokens.ink),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: tokens.ink,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    height: 1.2,
+                    letterSpacing: 0,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  detail,
+                  style: TextStyle(
+                    color: tokens.inkMuted,
+                    fontSize: 14,
+                    height: 1.35,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ],
             ),
           ),
+          const SizedBox(width: 12),
+          Icon(AppIcons.chevronRight(context), size: 18, color: tokens.ink),
         ],
       ),
     );
   }
 }
 
-class _StepMark extends StatelessWidget {
-  const _StepMark({required this.number, required this.label});
-
-  final String number;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 22,
-          height: 22,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: tokens.surfaceMuted,
-            borderRadius: BorderRadius.circular(5),
-            border: Border.all(color: tokens.oat),
-          ),
-          child: Text(
-            number,
-            style: TextStyle(
-              color: tokens.ink,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              height: 1,
-              letterSpacing: 0,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: TextStyle(
-            color: tokens.inkMuted,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _ToolsList extends StatelessWidget {
-  const _ToolsList({required this.isWide});
-
-  final bool isWide;
+  const _ToolsList();
 
   @override
   Widget build(BuildContext context) {
@@ -341,52 +259,30 @@ class _ToolsList extends StatelessWidget {
       _ToolItem(
         icon: AppIcons.settings(context),
         label: 'Settings',
-        detail: 'Output, model behavior, and appearance.',
+        detail: 'Model setup and appearance.',
         onTap: () => context.goNamed(AppRoute.settings),
       ),
     ];
 
-    return Container(
-      decoration: BoxDecoration(
-        color: tokens.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: tokens.oat),
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(isWide ? 22 : 18, 16, 18, 10),
-            child: Row(
-              children: [
-                Text(
-                  'TOOLS',
-                  style: TextStyle(
-                    color: tokens.inkSubtle,
-                    fontFamily: 'monospace',
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0,
-                    fontSize: 11,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  'Offline first',
-                  style: TextStyle(
-                    color: tokens.inkMuted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0,
-                  ),
-                ),
-              ],
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _HomeSectionLabel('TOOLS'),
+        const SizedBox(height: 8),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: tokens.oat)),
           ),
-          for (var i = 0; i < rows.length; i++) ...[
-            if (i > 0) Divider(height: 1, color: tokens.oat),
-            rows[i],
-          ],
-        ],
-      ),
+          child: Column(
+            children: [
+              for (var i = 0; i < rows.length; i++) ...[
+                rows[i],
+                Divider(height: 1, color: tokens.oat),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -423,17 +319,16 @@ class _ToolItemState extends State<_ToolItem> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 140),
         curve: Curves.easeOutCubic,
-        color: _down ? tokens.surfaceMuted : Colors.transparent,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+        color: Colors.transparent,
+        padding: const EdgeInsets.symmetric(vertical: 14),
         child: Row(
           children: [
             Container(
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: tokens.surfaceMuted,
+                color: _down ? tokens.surfaceRaised : tokens.surfaceMuted,
                 borderRadius: BorderRadius.circular(7),
-                border: Border.all(color: tokens.oat),
               ),
               child: Icon(widget.icon, size: 18, color: tokens.ink),
             ),

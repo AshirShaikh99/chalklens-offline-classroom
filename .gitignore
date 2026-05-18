@@ -33,8 +33,11 @@
 .env.*
 !.env.example
 
+# Local session / scratch notes
+CONTINUE.md
+.claude/
+
 # Logs and temporary files
 *.log
 *.tmp
 *.swp
-

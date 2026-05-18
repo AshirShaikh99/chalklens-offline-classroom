@@ -59,4 +59,43 @@ Student question: Where does rain come from?
       );
     });
   });
+
+  group('InlineReasoningSplitter', () {
+    test('separates inline think tags from answer text', () {
+      final splitter = InlineReasoningSplitter();
+
+      final split = splitter.add(
+        '<think>Check the lesson source first.</think>{"lesson_title":"Plants"}',
+      );
+
+      expect(split.reasoning, 'Check the lesson source first.');
+      expect(split.text, '{"lesson_title":"Plants"}');
+      expect(splitter.flush().isEmpty, isTrue);
+    });
+
+    test('holds partial marker tokens until the marker is complete', () {
+      final splitter = InlineReasoningSplitter();
+
+      expect(splitter.add('<thi').isEmpty, isTrue);
+      expect(
+        splitter.add('nk>Plan carefully</thi').reasoning,
+        'Plan carefully',
+      );
+      final split = splitter.add('nk>Final answer');
+
+      expect(split.reasoning, isEmpty);
+      expect(split.text, 'Final answer');
+    });
+
+    test('supports Gemma channel markers', () {
+      final splitter = InlineReasoningSplitter();
+
+      final split = splitter.add(
+        '<|channel>thought\nUse the glossary.<channel|>Student answer',
+      );
+
+      expect(split.reasoning, 'Use the glossary.');
+      expect(split.text, 'Student answer');
+    });
+  });
 }

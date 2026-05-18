@@ -121,7 +121,11 @@ void main() {
     expect(find.text('Generating lesson kit'), findsOneWidget);
     expect(find.text('Drafting the explanation'), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 260));
-    expect(find.text('24 tokens'), findsOneWidget);
+    expect(find.text('ON-DEVICE GENERATION'), findsOneWidget);
+    expect(
+      find.text('Writing one complete structured lesson kit.'),
+      findsOneWidget,
+    );
     expect(find.text('No lesson kit yet'), findsNothing);
   });
 }

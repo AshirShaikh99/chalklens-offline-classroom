@@ -1,15 +1,111 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
+import 'package:background_downloader/background_downloader.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../errors/exceptions.dart';
 
 enum ModelFileStatus { missing, incomplete, checksumMismatch, ready }
+
+enum ModelDownloadState {
+  idle,
+  enqueued,
+  running,
+  paused,
+  waitingForWiFi,
+  waitingForNetwork,
+  retrying,
+  verifying,
+  ready,
+  failed,
+}
+
+class ModelDownloadStatus {
+  const ModelDownloadStatus({
+    required this.state,
+    this.bytesReceived = 0,
+    this.bytesTotal,
+    this.networkSpeedMbps,
+    this.eta,
+    this.retryAttempt = 0,
+    this.errorMessage,
+    this.result,
+  });
+
+  const ModelDownloadStatus.idle()
+    : state = ModelDownloadState.idle,
+      bytesReceived = 0,
+      bytesTotal = null,
+      networkSpeedMbps = null,
+      eta = null,
+      retryAttempt = 0,
+      errorMessage = null,
+      result = null;
+
+  final ModelDownloadState state;
+  final int bytesReceived;
+  final int? bytesTotal;
+  final double? networkSpeedMbps;
+  final Duration? eta;
+  final int retryAttempt;
+  final String? errorMessage;
+  final ModelFileCheck? result;
+
+  double? get fractionComplete {
+    final total = bytesTotal;
+    if (total == null || total <= 0) return null;
+    return (bytesReceived / total).clamp(0.0, 1.0);
+  }
+
+  bool get isActive => switch (state) {
+    ModelDownloadState.enqueued ||
+    ModelDownloadState.running ||
+    ModelDownloadState.paused ||
+    ModelDownloadState.waitingForWiFi ||
+    ModelDownloadState.waitingForNetwork ||
+    ModelDownloadState.retrying ||
+    ModelDownloadState.verifying => true,
+    _ => false,
+  };
+
+  bool get isTerminal =>
+      state == ModelDownloadState.ready || state == ModelDownloadState.failed;
+
+  ModelDownloadStatus copyWith({
+    ModelDownloadState? state,
+    int? bytesReceived,
+    int? bytesTotal,
+    double? networkSpeedMbps,
+    bool clearSpeed = false,
+    Duration? eta,
+    bool clearEta = false,
+    int? retryAttempt,
+    String? errorMessage,
+    bool clearError = false,
+    ModelFileCheck? result,
+  }) {
+    return ModelDownloadStatus(
+      state: state ?? this.state,
+      bytesReceived: bytesReceived ?? this.bytesReceived,
+      bytesTotal: bytesTotal ?? this.bytesTotal,
+      networkSpeedMbps: clearSpeed
+          ? null
+          : networkSpeedMbps ?? this.networkSpeedMbps,
+      eta: clearEta ? null : eta ?? this.eta,
+      retryAttempt: retryAttempt ?? this.retryAttempt,
+      errorMessage: clearError ? null : errorMessage ?? this.errorMessage,
+      result: result ?? this.result,
+    );
+  }
+}
 
 class ModelFileCheck {
   const ModelFileCheck({
@@ -50,26 +146,71 @@ class _VerifiedFile {
   final String sha256;
 }
 
-/// Resolves, validates, and registers the local Gemma 4 LiteRT-LM file.
+class GemmaModelSpec {
+  const GemmaModelSpec({
+    required this.displayName,
+    required this.fileName,
+    required this.expectedSizeBytes,
+    required this.expectedSha256,
+    required this.modelType,
+    required this.fileType,
+  });
+
+  final String displayName;
+  final String fileName;
+  final int expectedSizeBytes;
+  final String expectedSha256;
+  final ModelType modelType;
+  final ModelFileType fileType;
+
+  bool get hasExpectedSha256 => expectedSha256.trim().isNotEmpty;
+}
+
+/// Resolves, validates, and registers the local LiteRT-LM model file.
 ///
 /// The model is intentionally not bundled as a Flutter asset because it is
 /// multi-GB. Production installs should import or download the model once,
 /// verify it, then run fully offline from the app documents directory.
 class GemmaModelInstaller {
   GemmaModelInstaller({
-    this.modelFileName = defaultModelFileName,
-    this.expectedSizeBytes = defaultModelSizeBytes,
-    this.expectedSha256 = defaultModelSha256,
-  });
+    GemmaModelSpec? modelSpec,
+    String? modelFileName,
+    int? expectedSizeBytes,
+    String? expectedSha256,
+    ModelType? modelType,
+    ModelFileType? fileType,
+  }) : modelSpec = modelSpec ?? defaultModelSpec,
+       modelFileName =
+           modelFileName ?? (modelSpec ?? defaultModelSpec).fileName,
+       expectedSizeBytes =
+           expectedSizeBytes ??
+           (modelSpec ?? defaultModelSpec).expectedSizeBytes,
+       expectedSha256 =
+           expectedSha256 ?? (modelSpec ?? defaultModelSpec).expectedSha256,
+       modelType = modelType ?? (modelSpec ?? defaultModelSpec).modelType,
+       fileType = fileType ?? (modelSpec ?? defaultModelSpec).fileType;
 
-  static const String defaultModelFileName = 'gemma-4-E2B-it.litertlm';
-  static const int defaultModelSizeBytes = 2583085056;
-  static const String defaultModelSha256 =
-      'ab7838cdfc8f77e54d8ca45eadceb20452d9f01e4bfade03e5dce27911b27e42';
+  static const GemmaModelSpec gemma4E2B = GemmaModelSpec(
+    displayName: 'Gemma 4 E2B',
+    fileName: 'gemma-4-E2B-it.litertlm',
+    expectedSizeBytes: 2583085056,
+    expectedSha256:
+        'ab7838cdfc8f77e54d8ca45eadceb20452d9f01e4bfade03e5dce27911b27e42',
+    modelType: ModelType.gemma4,
+    fileType: ModelFileType.litertlm,
+  );
+
+  static GemmaModelSpec get defaultModelSpec => gemma4E2B;
+
+  static String get defaultModelDisplayName => defaultModelSpec.displayName;
+  static String get defaultModelFileName => defaultModelSpec.fileName;
+  static int get defaultModelSizeBytes => defaultModelSpec.expectedSizeBytes;
+  static String get defaultModelSha256 => defaultModelSpec.expectedSha256;
 
   static const String _definedModelPath = String.fromEnvironment(
     'GEMMA_MODEL_PATH',
   );
+
   /// Put the model download URL here so the app fetches it on first launch.
   /// Or pass it at build time: --dart-define=GEMMA_MODEL_URL=https://...
   static const String defaultDownloadUrl = String.fromEnvironment(
@@ -87,6 +228,8 @@ class GemmaModelInstaller {
   // Process-wide cache of (path -> verified hash) keyed by stat fingerprint,
   // so the inference hot path skips re-hashing a model that has not changed.
   static final Map<String, _VerifiedFile> _verifiedCache = {};
+  static const String _verifiedPrefsPrefix =
+      'chalklens.modelInstaller.verified.v1.';
 
   // Process-wide queue serialising every Gemma model session. Without this,
   // a concurrent lesson generation and student-help generation can both call
@@ -94,10 +237,53 @@ class GemmaModelInstaller {
   // finally tears down the second one's session mid-stream.
   static Future<void> _gemmaQueue = Future<void>.value();
 
+  // Stable id for the background_downloader task so we can find it again
+  // after app restarts or screen rotations.
+  static const String _bgDownloadTaskId = 'chalklens_gemma_model';
+
+  // Singleton subscription + status state. The downloader plugin is process-
+  // global, so we keep the bridge to it process-global as well.
+  static StreamController<ModelDownloadStatus>? _downloadStatusController;
+  static StreamSubscription<TaskUpdate>? _downloadUpdatesSub;
+  static ModelDownloadStatus _lastDownloadStatus =
+      const ModelDownloadStatus.idle();
+  static bool _downloaderConfigured = false;
+  static Future<void>? _runtimeInitialization;
+
+  final GemmaModelSpec modelSpec;
   final String modelFileName;
   final int expectedSizeBytes;
   final String expectedSha256;
+  final ModelType modelType;
+  final ModelFileType fileType;
   String? _installedPath;
+
+  String get modelDisplayName => modelSpec.displayName;
+  bool get hasExpectedSha256 => expectedSha256.trim().isNotEmpty;
+
+  static Future<void> ensurePluginInitialized() {
+    final inFlight = _runtimeInitialization;
+    if (inFlight != null) return inFlight;
+
+    final initialized = _initializePlugin();
+    _runtimeInitialization = initialized;
+    return initialized;
+  }
+
+  static Future<void> _initializePlugin() async {
+    try {
+      // flutter_gemma needs a one-time initialization. It can be slow on some
+      // devices, so callers invoke it from the async setup path after runApp.
+      await FlutterGemma.initialize(maxDownloadRetries: 3);
+
+      // Configure before any background model task is enqueued so the
+      // downloader does not create a fallback OS notification.
+      await configureBackgroundDownloader();
+    } catch (_) {
+      _runtimeInitialization = null;
+      rethrow;
+    }
+  }
 
   Future<String> documentsModelPath() async {
     final docs = await getApplicationDocumentsDirectory();
@@ -191,12 +377,12 @@ class GemmaModelInstaller {
     try {
       await _copyFileWithProgress(source, tmp, onProgress: onProgress);
       final prepared = await _validatePreparedFile(tmp);
-      verifiedDigest = prepared.sha256Digest!;
+      verifiedDigest = prepared.sha256Digest ?? '';
       await _replaceTargetWithPreparedFile(prepared: tmp, target: target);
       _log('import installed: ${target.path}');
     } finally {
       if (await tmp.exists()) await tmp.delete();
-      _verifiedCache.remove(tmp.path);
+      await _forgetVerifiedFile(tmp.path);
     }
     _installedPath = null;
     return _finalizeInstalledFile(target, verifiedDigest);
@@ -260,16 +446,335 @@ class GemmaModelInstaller {
       }
 
       final prepared = await _validatePreparedFile(tmp);
-      verifiedDigest = prepared.sha256Digest!;
+      verifiedDigest = prepared.sha256Digest ?? '';
       await _replaceTargetWithPreparedFile(prepared: tmp, target: target);
       _log('download installed: ${target.path}');
     } finally {
       client.close(force: true);
       if (await tmp.exists()) await tmp.delete();
-      _verifiedCache.remove(tmp.path);
+      await _forgetVerifiedFile(tmp.path);
     }
     _installedPath = null;
     return _finalizeInstalledFile(target, verifiedDigest);
+  }
+
+  /// Configure the OS-level notification shown by background_downloader.
+  /// Idempotent — safe to call multiple times (e.g. once per app launch).
+  static Future<void> configureBackgroundDownloader() async {
+    if (_downloaderConfigured) return;
+    _downloaderConfigured = true;
+    FileDownloader().configureNotification(
+      running: const TaskNotification(
+        'Preparing ChalkLens',
+        'Downloading offline model • {progress}',
+      ),
+      complete: const TaskNotification(
+        'ChalkLens is ready',
+        'Offline lesson kits can now be generated.',
+      ),
+      error: const TaskNotification(
+        'Download interrupted',
+        'ChalkLens will retry automatically when the network is back.',
+      ),
+      paused: const TaskNotification(
+        'Download paused',
+        'Will resume when conditions are met.',
+      ),
+      progressBar: true,
+    );
+  }
+
+  /// Live stream of download state transitions and progress for the offline
+  /// model. Subscribing also rehydrates state from any in-flight task left
+  /// running by a previous app session.
+  Stream<ModelDownloadStatus> get downloadStatus {
+    _ensureDownloadBridge();
+    return _downloadStatusController!.stream;
+  }
+
+  ModelDownloadStatus get currentDownloadStatus => _lastDownloadStatus;
+
+  /// Enqueue (or restart) the background download for the offline model.
+  /// Returns immediately — the actual transfer is owned by a foreground
+  /// service on Android and survives app backgrounding.
+  Future<void> startBackgroundDownload(
+    Uri uri, {
+    required bool requiresWiFi,
+  }) async {
+    if (!uri.isScheme('https')) {
+      throw const ModelUnavailableException(
+        'Model URL must use https:// for safety.',
+      );
+    }
+    _ensureDownloadBridge();
+    await configureBackgroundDownloader();
+
+    // Cancel any prior task with the same id so we start clean. The .downloading
+    // working file is left intact and the plugin will use HTTP Range to resume
+    // when possible, or restart from byte 0 if the host doesn't allow it.
+    final existing = await FileDownloader().taskForId(_bgDownloadTaskId);
+    if (existing != null) {
+      await FileDownloader().cancelTaskWithId(_bgDownloadTaskId);
+    }
+
+    await _ensureEnoughStorage(payloadBytes: expectedSizeBytes);
+
+    final task = DownloadTask(
+      taskId: _bgDownloadTaskId,
+      url: uri.toString(),
+      filename: '$modelFileName.downloading',
+      baseDirectory: BaseDirectory.applicationDocuments,
+      updates: Updates.statusAndProgress,
+      requiresWiFi: requiresWiFi,
+      allowPause: true,
+      retries: 5,
+      displayName: 'ChalkLens AI model',
+    );
+
+    _emitDownloadStatus(
+      _lastDownloadStatus.copyWith(
+        state: ModelDownloadState.enqueued,
+        bytesReceived: 0,
+        bytesTotal: expectedSizeBytes,
+        retryAttempt: 0,
+        clearError: true,
+        clearSpeed: true,
+        clearEta: true,
+      ),
+    );
+
+    final enqueued = await FileDownloader().enqueue(task);
+    if (!enqueued) {
+      _emitDownloadStatus(
+        _lastDownloadStatus.copyWith(
+          state: ModelDownloadState.failed,
+          errorMessage:
+              'The download could not be queued. Free some storage or '
+              'restart ChalkLens, then try again.',
+        ),
+      );
+    }
+  }
+
+  Future<bool> pauseDownload() async {
+    final task = await FileDownloader().taskForId(_bgDownloadTaskId);
+    if (task is! DownloadTask) return false;
+    return FileDownloader().pause(task);
+  }
+
+  Future<bool> resumeDownload() async {
+    final task = await FileDownloader().taskForId(_bgDownloadTaskId);
+    if (task is! DownloadTask) return false;
+    return FileDownloader().resume(task);
+  }
+
+  Future<bool> cancelDownload() async {
+    final cancelled = await FileDownloader().cancelTaskWithId(
+      _bgDownloadTaskId,
+    );
+    if (cancelled) {
+      _emitDownloadStatus(const ModelDownloadStatus.idle());
+    }
+    return cancelled;
+  }
+
+  /// Tear down the singleton download bridge. Intended for tests; production
+  /// keeps the bridge alive for the lifetime of the process.
+  static Future<void> disposeDownloadBridge() async {
+    await _downloadUpdatesSub?.cancel();
+    _downloadUpdatesSub = null;
+    await _downloadStatusController?.close();
+    _downloadStatusController = null;
+    _lastDownloadStatus = const ModelDownloadStatus.idle();
+  }
+
+  /// Whether the OS-level scheduler still has a task with our id, regardless
+  /// of whether the app was killed and restarted in between.
+  Future<bool> hasInProgressDownload() async {
+    final task = await FileDownloader().taskForId(_bgDownloadTaskId);
+    return task != null;
+  }
+
+  void _ensureDownloadBridge() {
+    if (_downloadStatusController != null) return;
+    _downloadStatusController = StreamController<ModelDownloadStatus>.broadcast(
+      onListen: () {
+        // Replay the last known status so a late subscriber sees current state.
+        _downloadStatusController!.add(_lastDownloadStatus);
+      },
+    );
+    _downloadUpdatesSub = FileDownloader().updates.listen(
+      _handleDownloadUpdate,
+    );
+  }
+
+  void _handleDownloadUpdate(TaskUpdate update) {
+    if (update.task.taskId != _bgDownloadTaskId) return;
+    if (update is TaskStatusUpdate) {
+      _handleDownloadStatusUpdate(update);
+    } else if (update is TaskProgressUpdate) {
+      _handleDownloadProgressUpdate(update);
+    }
+  }
+
+  void _handleDownloadStatusUpdate(TaskStatusUpdate update) {
+    switch (update.status) {
+      case TaskStatus.enqueued:
+        _emitDownloadStatus(
+          _lastDownloadStatus.copyWith(state: ModelDownloadState.enqueued),
+        );
+      case TaskStatus.running:
+        _emitDownloadStatus(
+          _lastDownloadStatus.copyWith(
+            state: ModelDownloadState.running,
+            clearError: true,
+          ),
+        );
+      case TaskStatus.paused:
+        _emitDownloadStatus(
+          _lastDownloadStatus.copyWith(state: ModelDownloadState.paused),
+        );
+      case TaskStatus.waitingToRetry:
+        _emitDownloadStatus(
+          _lastDownloadStatus.copyWith(
+            state: ModelDownloadState.retrying,
+            retryAttempt: _lastDownloadStatus.retryAttempt + 1,
+          ),
+        );
+      case TaskStatus.complete:
+        _finalizeBackgroundDownload();
+      case TaskStatus.canceled:
+        _emitDownloadStatus(const ModelDownloadStatus.idle());
+      case TaskStatus.notFound:
+        _emitDownloadStatus(
+          _lastDownloadStatus.copyWith(
+            state: ModelDownloadState.failed,
+            errorMessage:
+                'The offline model file is not available at the configured '
+                'address. Try again from Model Setup.',
+          ),
+        );
+      case TaskStatus.failed:
+        _emitDownloadStatus(
+          _lastDownloadStatus.copyWith(
+            state: ModelDownloadState.failed,
+            errorMessage: _friendlyDownloadError(update.exception),
+          ),
+        );
+    }
+  }
+
+  void _handleDownloadProgressUpdate(TaskProgressUpdate update) {
+    // Plugin uses sentinel progress values to signal non-running states.
+    // Treat those as no-ops here — status updates carry the real transition.
+    final progress = update.progress;
+    if (progress < 0 || progress > 1) return;
+
+    final total = update.hasExpectedFileSize
+        ? update.expectedFileSize
+        : (_lastDownloadStatus.bytesTotal ?? expectedSizeBytes);
+    final received = (progress * total).round();
+
+    _emitDownloadStatus(
+      _lastDownloadStatus.copyWith(
+        state: ModelDownloadState.running,
+        bytesReceived: received,
+        bytesTotal: total,
+        networkSpeedMbps: update.hasNetworkSpeed ? update.networkSpeed : null,
+        clearSpeed: !update.hasNetworkSpeed,
+        eta: update.hasTimeRemaining ? update.timeRemaining : null,
+        clearEta: !update.hasTimeRemaining,
+        clearError: true,
+      ),
+    );
+  }
+
+  Future<void> _finalizeBackgroundDownload() async {
+    _emitDownloadStatus(
+      _lastDownloadStatus.copyWith(
+        state: ModelDownloadState.verifying,
+        clearSpeed: true,
+        clearEta: true,
+      ),
+    );
+
+    final docs = await getApplicationDocumentsDirectory();
+    final tmp = File('${docs.path}/$modelFileName.downloading');
+    final target = File(await documentsModelPath());
+
+    String verifiedDigest;
+    try {
+      final prepared = await _validatePreparedFile(tmp);
+      verifiedDigest = prepared.sha256Digest ?? '';
+      await _replaceTargetWithPreparedFile(prepared: tmp, target: target);
+      _installedPath = null;
+    } catch (e) {
+      _log('background download verification failed: $e');
+      // Drop the bad tmp so the next retry starts cleanly.
+      if (await tmp.exists()) {
+        try {
+          await tmp.delete();
+        } catch (_) {}
+      }
+      _emitDownloadStatus(
+        _lastDownloadStatus.copyWith(
+          state: ModelDownloadState.failed,
+          errorMessage: _friendlyVerificationError(e),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final check = await _finalizeInstalledFile(target, verifiedDigest);
+      _emitDownloadStatus(
+        _lastDownloadStatus.copyWith(
+          state: ModelDownloadState.ready,
+          bytesReceived: check.expectedSizeBytes,
+          bytesTotal: check.expectedSizeBytes,
+          result: check,
+          clearSpeed: true,
+          clearEta: true,
+          clearError: true,
+        ),
+      );
+    } catch (e) {
+      _emitDownloadStatus(
+        _lastDownloadStatus.copyWith(
+          state: ModelDownloadState.failed,
+          errorMessage: _friendlyVerificationError(e),
+        ),
+      );
+    }
+  }
+
+  void _emitDownloadStatus(ModelDownloadStatus status) {
+    _lastDownloadStatus = status;
+    _downloadStatusController?.add(status);
+  }
+
+  String _friendlyDownloadError(TaskException? e) {
+    if (e == null) {
+      return 'The download stopped before it finished. Tap retry to '
+          'continue from where it left off.';
+    }
+    final desc = e.description;
+    if (desc.toLowerCase().contains('disk') ||
+        desc.toLowerCase().contains('space')) {
+      return 'Not enough storage on the device to finish the download. '
+          'Free up about 3 GB and try again.';
+    }
+    return 'Download interrupted: $desc';
+  }
+
+  String _friendlyVerificationError(Object error) {
+    final text = error.toString();
+    if (text.contains('checksum') || text.contains('sha256')) {
+      return 'The downloaded file looks corrupted. Tap retry to fetch a '
+          'fresh copy.';
+    }
+    return 'The download finished but could not be verified. Tap retry to '
+        'fetch a fresh copy.';
   }
 
   Future<HttpClientResponse> _fetchWithHttpsRedirects(
@@ -332,7 +837,7 @@ class GemmaModelInstaller {
       );
     }
 
-    if (!verifyChecksum) {
+    if (!verifyChecksum || !hasExpectedSha256) {
       return ModelFileCheck(
         status: ModelFileStatus.ready,
         path: path,
@@ -342,14 +847,11 @@ class GemmaModelInstaller {
       );
     }
 
-    // Skip the ~20s SHA-256 if we already verified this exact file content
-    // earlier in the process. Cache key includes mtime so any external write
-    // invalidates it.
-    final modifiedMicros = stat.modified.microsecondsSinceEpoch;
-    final cached = _verifiedCache[path];
-    if (cached != null &&
-        cached.size == size &&
-        cached.modifiedMicros == modifiedMicros) {
+    // Skip the ~20s SHA-256 if we already verified this exact file content.
+    // The fingerprint is persisted so a normal app reopen is O(stat), not a
+    // full re-hash of the multi-GB model.
+    final cached = await _cachedVerifiedFile(path, stat);
+    if (cached != null) {
       return ModelFileCheck(
         status: cached.sha256 == expectedSha256
             ? ModelFileStatus.ready
@@ -366,11 +868,7 @@ class GemmaModelInstaller {
     }
 
     final digest = await sha256OfFile(file);
-    _verifiedCache[path] = _VerifiedFile(
-      size: size,
-      modifiedMicros: modifiedMicros,
-      sha256: digest,
-    );
+    await _rememberVerifiedFile(path, stat, digest);
     if (digest != expectedSha256) {
       return ModelFileCheck(
         status: ModelFileStatus.checksumMismatch,
@@ -416,6 +914,7 @@ class GemmaModelInstaller {
 
   Future<File> _workingFile(String suffix) async {
     final temp = await getTemporaryDirectory();
+    await _ensureDirectoryExists(temp);
     final timestamp = DateTime.now().microsecondsSinceEpoch;
     return File('${temp.path}/$modelFileName.$suffix.$timestamp');
   }
@@ -428,10 +927,17 @@ class GemmaModelInstaller {
     await _deleteWorkingFilesInDirectory(docs, suffix);
   }
 
+  Future<void> _ensureDirectoryExists(Directory directory) async {
+    if (await directory.exists()) return;
+    await directory.create(recursive: true);
+  }
+
   Future<void> _deleteWorkingFilesInDirectory(
     Directory directory,
     String suffix,
   ) async {
+    if (!await directory.exists()) return;
+
     final exactName = '$modelFileName.$suffix';
     final prefix = '$exactName.';
     await for (final entity in directory.list()) {
@@ -462,7 +968,7 @@ class GemmaModelInstaller {
     if (stat.size == expectedSizeBytes) return;
     try {
       await target.delete();
-      _verifiedCache.remove(target.path);
+      await _forgetVerifiedFile(target.path);
       _log(
         'deleted partial existing model before install: ${target.path} '
         '(${_formatBytes(stat.size)})',
@@ -619,11 +1125,9 @@ class GemmaModelInstaller {
     String verifiedDigest,
   ) async {
     final stat = await target.stat();
-    _verifiedCache[target.path] = _VerifiedFile(
-      size: stat.size,
-      modifiedMicros: stat.modified.microsecondsSinceEpoch,
-      sha256: verifiedDigest,
-    );
+    if (verifiedDigest.isNotEmpty) {
+      await _rememberVerifiedFile(target.path, stat, verifiedDigest);
+    }
     return ModelFileCheck(
       status: ModelFileStatus.ready,
       path: target.path,
@@ -634,51 +1138,134 @@ class GemmaModelInstaller {
     );
   }
 
-  /// Hot-path eligibility check. Verifies size *and* SHA-256, using a process
-  /// cache keyed by `(path, size, mtime)` so subsequent calls are O(stat).
-  /// First call after install pays the ~20s hash cost on a background isolate.
+  Future<_VerifiedFile?> _cachedVerifiedFile(String path, FileStat stat) async {
+    final cached = _verifiedCache[path];
+    if (_matchesVerifiedFile(cached, stat)) return cached;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_verifiedCacheKey(path));
+      if (raw == null) return null;
+
+      final json = jsonDecode(raw) as Map<String, dynamic>;
+      final entry = _VerifiedFile(
+        size: _jsonInt(json['size']),
+        modifiedMicros: _jsonInt(json['modifiedMicros']),
+        sha256: json['sha256'] as String? ?? '',
+      );
+      if (!_matchesVerifiedFile(entry, stat)) {
+        await prefs.remove(_verifiedCacheKey(path));
+        return null;
+      }
+
+      _verifiedCache[path] = entry;
+      return entry;
+    } catch (e) {
+      _log('verification cache read skipped: $e');
+      return null;
+    }
+  }
+
+  Future<void> _rememberVerifiedFile(
+    String path,
+    FileStat stat,
+    String digest,
+  ) async {
+    final entry = _VerifiedFile(
+      size: stat.size,
+      modifiedMicros: stat.modified.microsecondsSinceEpoch,
+      sha256: digest,
+    );
+    _verifiedCache[path] = entry;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        _verifiedCacheKey(path),
+        jsonEncode({
+          'size': entry.size,
+          'modifiedMicros': entry.modifiedMicros,
+          'sha256': entry.sha256,
+        }),
+      );
+    } catch (e) {
+      _log('verification cache write skipped: $e');
+    }
+  }
+
+  Future<void> _forgetVerifiedFile(String path) async {
+    _verifiedCache.remove(path);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_verifiedCacheKey(path));
+    } catch (e) {
+      _log('verification cache remove skipped: $e');
+    }
+  }
+
+  bool _matchesVerifiedFile(_VerifiedFile? entry, FileStat stat) {
+    if (entry == null) return false;
+    return entry.size == stat.size &&
+        entry.modifiedMicros == stat.modified.microsecondsSinceEpoch &&
+        entry.sha256.isNotEmpty;
+  }
+
+  String _verifiedCacheKey(String path) {
+    final pathHash = sha1.convert(utf8.encode(path)).toString();
+    return '$_verifiedPrefsPrefix$pathHash';
+  }
+
+  int _jsonInt(Object? value) {
+    return switch (value) {
+      int v => v,
+      num v => v.toInt(),
+      String v => int.tryParse(v) ?? -1,
+      _ => -1,
+    };
+  }
+
+  /// Hot-path eligibility check. Verifies size and, when the spec provides a
+  /// SHA-256, verifies content with a cache keyed by `(path, size, mtime)`.
+  /// A never-verified sideload pays the hash cost once.
   Future<bool> _isUsableModelFile(File file) async {
     if (!await file.exists()) return false;
     final stat = await file.stat();
     if (stat.size != expectedSizeBytes) return false;
+    if (!hasExpectedSha256) return true;
 
-    final fingerprint = stat.modified.microsecondsSinceEpoch;
-    final cached = _verifiedCache[file.path];
-    if (cached != null &&
-        cached.size == stat.size &&
-        cached.modifiedMicros == fingerprint) {
+    final cached = await _cachedVerifiedFile(file.path, stat);
+    if (cached != null) {
       return cached.sha256 == expectedSha256;
     }
 
     final digest = await sha256OfFile(file);
-    _verifiedCache[file.path] = _VerifiedFile(
-      size: stat.size,
-      modifiedMicros: fingerprint,
-      sha256: digest,
-    );
+    await _rememberVerifiedFile(file.path, stat, digest);
     return digest == expectedSha256;
   }
 
   Future<String> sha256OfFile(File file) async {
-    return compute(_hashFileInIsolate, file.path);
+    final path = file.path;
+    return Isolate.run(() => _hashFileInIsolate(path));
   }
 
   Future<void> ensureInstalled() async {
     if (_installedPath != null) return;
+    await ensurePluginInitialized();
     final path = await resolveModelPath();
 
     try {
       _log('runtime registration started: $path');
       await FlutterGemma.installModel(
-        modelType: ModelType.gemma4,
-        fileType: ModelFileType.litertlm,
+        modelType: modelType,
+        fileType: fileType,
       ).fromFile(path).install();
       _installedPath = path;
       _log('runtime registration finished');
     } catch (e) {
       _log('runtime registration failed: $e');
       throw ModelUnavailableException(
-        'flutter_gemma could not register the Gemma 4 LiteRT-LM model.',
+        'flutter_gemma could not register the $modelDisplayName LiteRT-LM '
+        'model.',
         cause: e,
       );
     }

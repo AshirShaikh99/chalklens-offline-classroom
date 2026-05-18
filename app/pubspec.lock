@@ -42,7 +42,7 @@ packages:
     source: hosted
     version: "2.13.1"
   background_downloader:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: background_downloader
       sha256: "4cb23d9ad4f5060944f38164e7b90d4bf99b57b2472a3bd4676e59b2db4afd06"
@@ -306,10 +306,10 @@ packages:
     dependency: "direct main"
     description:
       name: flutter_gemma
-      sha256: "288f1960ca035047979a1a3a71543c6910e9c1d212d25b4d18e9cefc2d4a1784"
+      sha256: "0e528c8e7dce211f5b679bb3506bb5edaa1190dcb5063a841d1997766007fd44"
       url: "https://pub.dev"
     source: hosted
-    version: "0.14.5"
+    version: "0.15.1"
   flutter_lints:
     dependency: "direct dev"
     description:
@@ -801,7 +801,7 @@ packages:
     source: hosted
     version: "4.0.3"
   shared_preferences:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: shared_preferences
       sha256: c3025c5534b01739267eb7d76959bbc25a6d10f6988e1c2a3036940133dd10bf

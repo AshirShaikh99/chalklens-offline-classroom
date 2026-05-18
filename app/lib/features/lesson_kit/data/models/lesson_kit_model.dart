@@ -8,7 +8,7 @@ import 'quiz_question_model.dart';
 part 'lesson_kit_model.freezed.dart';
 part 'lesson_kit_model.g.dart';
 
-/// Wire-format DTO for [LessonKit]. Mirrors the JSON Gemma 4 emits via
+/// Wire-format DTO for [LessonKit]. Mirrors the JSON the offline model emits via
 /// the LessonKit schema in the system prompt. Maps to the pure domain
 /// entity for consumption by the rest of the app.
 @freezed

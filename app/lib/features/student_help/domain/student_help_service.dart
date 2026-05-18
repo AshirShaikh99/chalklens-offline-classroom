@@ -11,6 +11,7 @@ abstract class StudentHelpService {
     required AppLanguage language,
     Uint8List? audioBytes,
     LessonKit? lessonKit,
+    bool? thinkingModeOverride,
     StudentHelpThinkingCallback? onThinking,
   });
 }
